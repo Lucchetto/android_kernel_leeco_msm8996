@@ -6022,17 +6022,19 @@ static int cpu_util_wake(int cpu, struct task_struct *p)
 
 		if (new_util < cur_capacity) {
 			if (cpu_rq(i)->nr_running) {
-				if(prefer_idle) {
-					// Find a target cpu with lowest
-					// utilization.
+				if (prefer_idle) {
+					/* Find a target cpu with highest
+					 * utilization.
+					 */
 					if (target_util == 0 ||
 						target_util < new_util) {
 						target_cpu = i;
 						target_util = new_util;
 					}
 				} else {
-					// Find a target cpu with highest
-					// utilization.
+					/* Find a target cpu with lowest
+					 * utilization.
+					 */
 					if (target_util == 0 ||
 						target_util > new_util) {
 						target_cpu = i;
