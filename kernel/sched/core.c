@@ -2513,6 +2513,7 @@ void wake_up_new_task(struct task_struct *p)
 #endif
 	/* Post initialize new task's util average when its cfs_rq is set */
 	rq = __task_rq_lock(p);
+	update_rq_clock(rq);
 	post_init_entity_util_avg(&p->se);
 
 	walt_mark_task_starting(p);
