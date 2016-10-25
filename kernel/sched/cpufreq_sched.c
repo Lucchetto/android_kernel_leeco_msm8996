@@ -350,10 +350,37 @@ static int cpufreq_sched_policy_init(struct cpufreq_policy *policy)
 
 	policy->governor_data = gd;
 
-	rc = sysfs_create_group(get_governor_parent_kobj(policy), get_sysfs_attr());
-	if (rc) {
-		pr_err("%s: couldn't create sysfs attributes: %d\n", __func__, rc);
-		goto err;
+	if (!global_tunables) {
+		gd->tunables = kzalloc(sizeof(*gd->tunables), GFP_KERNEL);
+		if (!gd->tunables)
+			goto free_gd;
+
+		gd->tunables->up_throttle_nsec =
+			policy->cpuinfo.transition_latency ?
+			policy->cpuinfo.transition_latency :
+			THROTTLE_UP_NSEC;
+		gd->tunables->down_throttle_nsec =
+			THROTTLE_DOWN_NSEC;
+
+		rc = kobject_init_and_add(&gd->tunables->attr_set.kobj,
+					  &tunables_ktype,
+					  get_governor_parent_kobj(policy),
+					  "%s", cpufreq_gov_sched.name);
+		if (rc)
+			goto free_tunables;
+
+		gov_attr_set_init(&gd->tunables->attr_set,
+				  &gd->tunables_hook);
+
+		pr_debug("%s: throttle_threshold = %u [ns]\n",
+			 __func__, gd->tunables->up_throttle_nsec);
+
+		if (!have_governor_per_policy())
+			global_tunables = gd->tunables;
+	} else {
+		gd->tunables = global_tunables;
+		gov_attr_set_get(&global_tunables->attr_set,
+				 &gd->tunables_hook);
 	}
 
 	if (cpufreq_driver_is_slow()) {
