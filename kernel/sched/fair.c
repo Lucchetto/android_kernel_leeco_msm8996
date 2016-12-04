@@ -5552,9 +5552,9 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		  int this_cpu, int sd_flag)
 {
 	struct sched_group *idlest = NULL, *group = sd->groups;
-	struct sched_group *most_spare_sg = NULL;
+	struct sched_group *fit_group = NULL;
 	unsigned long min_load = ULONG_MAX, this_load = 0;
-	unsigned long most_spare = 0, this_spare = 0;
+	unsigned long fit_capacity = ULONG_MAX;
 	int load_idx = sd->forkexec_idx;
 	int imbalance = 100 + (sd->imbalance_pct-100)/2;
 
@@ -5562,7 +5562,7 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		load_idx = sd->wake_idx;
 
 	do {
-		unsigned long load, avg_load, spare_cap, max_spare_cap;
+		unsigned long load, avg_load;
 		int local_group;
 		int i;
 
@@ -5590,16 +5590,13 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 
 			avg_load += load;
 
-			spare_cap = capacity_spare_wake(i, p);
-
 			/*
-			 * Look for group which has most spare capacity on a
-			 * single cpu.
+			 * Look for most energy-efficient group that can fit
+			 * that can fit the task.
 			 */
-			spare_capacity = capacity_of(i) - cpu_util(i);
-			if (spare_capacity > max_spare_capacity) {
-				max_spare_capacity = spare_capacity;
-				spare_group = group;
+			if (capacity_of(i) < fit_capacity && task_fits_spare(p, i)) {
+				fit_capacity = capacity_of(i);
+				fit_group = group;
 			}
 		}
 
@@ -5622,18 +5619,8 @@ find_idlest_group(struct sched_domain *sd, struct task_struct *p,
 		}
 	} while (group = group->next, group != sd->groups);
 
-	/*
-	 * The cross-over point between using spare capacity or least load
-	 * is too conservative for high utilization tasks on partially
-	 * utilized systems if we require spare_capacity > task_util(p)
-	 * so we allow for some task stuffing by using
-	 * spare_capacity > task_util(p)/2.
-	 */
-	if (this_spare > task_util(p) / 2 &&
-	    imbalance*this_spare > 100*most_spare)
-		return NULL;
-	else if (most_spare > task_util(p) / 2)
-		return most_spare_sg;
+	if (fit_group)
+		return fit_group;
 
 	if (!idlest || 100*this_load < imbalance*min_load)
 		return NULL;
