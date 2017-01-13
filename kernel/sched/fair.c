@@ -752,11 +752,10 @@ void init_entity_runnable_average(struct sched_entity *se)
 	if (entity_is_task(se))
 	sa->load_avg = scale_load_down(se->load.weight);
 	sa->load_sum = sa->load_avg * LOAD_AVG_MAX;
-	/*
-	 * At this point, util_avg won't be used in select_task_rq_fair anyway
-	 */
-	sa->util_avg = 0;
-	sa->util_sum = 0;
+	sa->util_avg =  sched_freq() ?
+		sysctl_sched_initial_task_util :
+		scale_load_down(SCHED_LOAD_SCALE);
+	sa->util_sum = sa->util_avg * LOAD_AVG_MAX;
 	/* when this task enqueue'ed, it will contribute to its cfs_rq's load_avg */
 }
 
@@ -2897,18 +2896,6 @@ update_cfs_rq_load_avg(u64 now, struct cfs_rq *cfs_rq, bool update_freq)
 	if (update_freq && (decayed || removed_util))
 		cfs_rq_util_change(cfs_rq);
 
-	/* Trace CPU load, unless cfs_rq belongs to a non-root task_group */
-	if (cfs_rq == &rq_of(cfs_rq)->cfs)
-		trace_sched_load_avg_cpu(cpu_of(rq_of(cfs_rq)), cfs_rq);
-
-	return decayed || removed;
-}
-/*
- * Optional action to be done while updating the load average
- */
-#define UPDATE_TG	0x1
-#define SKIP_AGE_LOAD	0x2
-
 /* Update task and its cfs_rq load average */
 static inline void update_load_avg(struct sched_entity *se, int flags)
 {
@@ -2930,17 +2917,9 @@ static inline void update_load_avg(struct sched_entity *se, int flags)
 
 	decayed = update_cfs_rq_load_avg(now, cfs_rq, true);
 
-	decayed |= propagate_entity_load_avg(se);
-
-	if (decayed && (flags & UPDATE_TG))
-		update_tg_load_avg(cfs_rq, 0);
-
-	if (entity_is_task(se)) {
-#ifdef CONFIG_SCHED_WALT
-		ptr = (void *)&(task_of(se)->ravg);
-#endif
-		trace_sched_load_avg_task(task_of(se), &se->avg, ptr);
-	}
+	if (entity_is_task(se))
+		trace_sched_load_avg_task(task_of(se), &se->avg);
+	trace_sched_load_avg_cpu(cpu, cfs_rq);
 }
 
 /**
@@ -4475,9 +4454,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	/* Update SchedTune accouting */
 	schedtune_enqueue_task(p, cpu_of(rq));
 
-	/* Update SchedTune accouting */
-	schedtune_enqueue_task(p, cpu_of(rq));
-
 #endif /* CONFIG_SMP */
 
 	hrtick_update(rq);
@@ -4562,14 +4538,6 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 				set_cfs_cpu_capacity(cpu_of(rq), false, 0);
 		}
 	}
-
-	/* Update SchedTune accouting */
-	schedtune_dequeue_task(p, cpu_of(rq));
-
-
-	/* Update estimated utilization */
-	if (task_sleep)
-		p->se.avg.util_est = p->se.avg.util_avg;
 
 	/* Update SchedTune accouting */
 	schedtune_dequeue_task(p, cpu_of(rq));
