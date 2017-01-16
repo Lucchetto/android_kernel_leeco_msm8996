@@ -5704,9 +5704,9 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 {
 	struct sched_domain *sd;
 	struct sched_group *sg;
-	int best_idle = -1;
-	int best_idle_cstate = -1;
-	int best_idle_capacity = INT_MAX;
+	int best_idle_cpu = -1;
+	int best_idle_cstate = INT_MAX;
+	unsigned long best_idle_capacity = ULONG_MAX;
 
 	if (!sysctl_sched_cstate_aware) {
 		if (idle_cpu(target)) {
@@ -5775,8 +5775,9 @@ next:
 			sg = sg->next;
 		} while (sg != sd->groups);
 	}
-	if (best_idle > 0)
-		target = best_idle;
+
+	if (best_idle_cpu >= 0)
+		target = best_idle_cpu;
 
 done:
 	schedstat_inc(p, se.statistics.nr_wakeups_sis_count);
