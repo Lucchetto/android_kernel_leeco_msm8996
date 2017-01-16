@@ -5854,11 +5854,8 @@ static inline int find_best_target(struct task_struct *p, bool boosted, bool pre
 			 * Unconditionally favoring tasks that prefer idle cpus to
 			 * improve latency.
 			 */
-			if (idle_cpu(i) && prefer_idle) {
-				if (best_idle_cpu < 0)
-					best_idle_cpu = i;
-				continue;
-			}
+			if (idle_cpu(i) && prefer_idle)
+				return i;
 
 			cur_capacity = capacity_curr_of(i);
 
@@ -5891,8 +5888,8 @@ static inline int find_best_target(struct task_struct *p, bool boosted, bool pre
 		}
 	} while (sg = sg->next, sg != sd->groups);
 
-	rcu_lockdep_assert(rcu_read_lock_sched_held(),
-			   "sched RCU must be held");
+	if (target_cpu < 0)
+		target_cpu = best_idle_cpu >= 0 ? best_idle_cpu : backup_cpu;
 
 	return boosted ? rd->max_cap_orig_cpu : rd->min_cap_orig_cpu;
 }
