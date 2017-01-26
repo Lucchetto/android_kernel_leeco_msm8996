@@ -4471,7 +4471,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	}
 
 #endif /* CONFIG_SMP */
-
 	hrtick_update(rq);
 }
 
@@ -5461,7 +5460,6 @@ static int wake_affine(struct sched_domain *sd, struct task_struct *p,
 
 static inline unsigned long task_util(struct task_struct *p)
 {
-
 #ifdef CONFIG_SCHED_WALT
 	if (!walt_disabled && sysctl_sched_use_walt_task_util) {
 		unsigned long demand = p->ravg.demand;
@@ -5943,9 +5941,8 @@ next:
 			sg = sg->next;
 		} while (sg != sd->groups);
 	}
-
-	if (best_idle_cpu >= 0)
-		target = best_idle_cpu;
+	if (best_idle > 0)
+		target = best_idle;
 
 done:
 	schedstat_inc(p, se.statistics.nr_wakeups_sis_count);
@@ -6009,12 +6006,15 @@ static int cpu_util_wake(int cpu, struct task_struct *p)
 	if (!walt_disabled && sysctl_sched_use_walt_cpu_util)
 		return cpu_util(cpu);
 #endif
-	/* Task has no contribution or is new */
-	if (cpu != task_cpu(p) || !p->se.avg.last_update_time)
-		return cpu_util(cpu);
-
-	capacity = capacity_orig_of(cpu);
-	util = max_t(long, cpu_util(cpu) - task_util(p), 0);
+		/*
+		 * Unconditionally favoring tasks that prefer idle cpus to
+		 * improve latency.
+		 */
+		if (idle_cpu(i) && prefer_idle) {
+			if (best_idle_cpu < 0)
+				best_idle_cpu = i;
+			continue;
+		}
 
 		cur_capacity = capacity_curr_of(i);
 		rq = cpu_rq(i);
@@ -6044,7 +6044,7 @@ static int cpu_util_wake(int cpu, struct task_struct *p)
 			} else if (!prefer_idle) {
 				if (best_idle_cpu < 0 ||
 					(sysctl_sched_cstate_aware &&
-					 	best_idle_cstate > idle_idx)) {
+						best_idle_cstate > idle_idx)) {
 					best_idle_cstate = idle_idx;
 					best_idle_cpu = i;
 				}
@@ -6127,7 +6127,6 @@ static int energy_aware_wake_cpu(struct task_struct *p, int target, int sync)
 				sg_target = sg;
 				target_max_cap = capacity_of(max_cap_cpu);
 			}
-
 		} while (sg = sg->next, sg != sd->groups);
 
 		task_util_boosted = boosted_task_util(p);
@@ -6311,10 +6310,11 @@ static int energy_aware_wake_cpu(struct task_struct *p, int target, int sync)
 		 */
 #ifdef CONFIG_CGROUP_SCHEDTUNE
 		bool boosted = schedtune_task_boost(p) > 0;
+		bool prefer_idle = schedtune_prefer_idle(p) > 0;
 #else
 		bool boosted = get_sysctl_sched_cfs_boost() > 0;
+		bool prefer_idle = 0;
 #endif
-		bool prefer_idle = schedtune_prefer_idle(p) > 0;
 		int tmp_target = find_best_target(p, boosted, prefer_idle);
 		if (tmp_target >= 0) {
 			target_cpu = tmp_target;
