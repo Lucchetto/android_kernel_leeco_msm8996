@@ -6305,87 +6305,21 @@ static int energy_aware_wake_cpu(struct task_struct *p, int target, int sync)
 			target_util = new_util;
 			target_cpu = i;
 		}
-
-	} while (sg = sg->next, sg != sd->groups);
-
-	/*
-	 * For non latency sensitive tasks, cases B and C in the previous loop,
-	 * we pick the best IDLE CPU only if we was not able to find a target
-	 * ACTIVE CPU.
-	 *
-	 * Policies priorities:
-	 *
-	 * - prefer_idle tasks:
-	 *
-	 *   a) IDLE CPU available, we return immediately
-	 *   b) ACTIVE CPU where task fits and has the bigger maximum spare
-	 *      capacity (i.e. target_cpu)
-	 *   c) ACTIVE CPU with less contention due to other tasks
-	 *      (i.e. best_active_cpu)
-	 *
-	 * - NON prefer_idle tasks:
-	 *
-	 *   a) ACTIVE CPU: target_cpu
-	 *   b) IDLE CPU: best_idle_cpu
-	 */
-	if (target_cpu == -1)
-		target_cpu = prefer_idle
-			? best_active_cpu
-			: best_idle_cpu;
-	else
-		*backup_cpu = prefer_idle
-		? best_active_cpu
-		: best_idle_cpu;
-
-	trace_sched_find_best_target(p, prefer_idle, min_util, cpu,
-				     best_idle_cpu, best_active_cpu,
-				     target_cpu);
-
-	schedstat_inc(p, se.statistics.nr_wakeups_fbt_count);
-	schedstat_inc(this_rq(), eas_stats.fbt_count);
-
-	return target_cpu;
-}
-
-/*
- * Disable WAKE_AFFINE in the case where task @p doesn't fit in the
- * capacity of either the waking CPU @cpu or the previous CPU @prev_cpu.
- *
- * In that case WAKE_AFFINE doesn't make sense and we'll let
- * BALANCE_WAKE sort things out.
- */
-static int wake_cap(struct task_struct *p, int cpu, int prev_cpu)
-{
-	long min_cap, max_cap;
-
-	min_cap = min(capacity_orig_of(prev_cpu), capacity_orig_of(cpu));
-	max_cap = cpu_rq(cpu)->rd->max_cpu_capacity.val;
-
-	/* Minimum capacity is close to max, no need to abort wake_affine */
-	if (max_cap - min_cap < max_cap >> 3)
-		return 0;
-
-	/* Bring task utilization in sync with prev_cpu */
-	sync_entity_load_avg(&p->se);
-
-	return min_cap * 1024 < task_util(p) * capacity_margin;
-}
-
-static int select_energy_cpu_brute(struct task_struct *p, int prev_cpu, int sync)
-{
-	int target_cpu = prev_cpu, tmp_target, tmp_backup;
-	bool boosted, prefer_idle;
-
-	schedstat_inc(p, se.statistics.nr_wakeups_secb_attempts);
-	schedstat_inc(this_rq(), eas_stats.secb_attempts);
-
-	if (sysctl_sched_sync_hint_enable && sync) {
-		int cpu = smp_processor_id();
-
-		if (cpumask_test_cpu(cpu, tsk_cpus_allowed(p))) {
-			schedstat_inc(p, se.statistics.nr_wakeups_secb_sync);
-			schedstat_inc(this_rq(), eas_stats.secb_sync);
-			return cpu;
+	} else {
+		/*
+		 * Find a cpu with sufficient capacity
+		 */
+#ifdef CONFIG_CGROUP_SCHEDTUNE
+		bool boosted = schedtune_task_boost(p) > 0;
+#else
+		bool boosted = get_sysctl_sched_cfs_boost() > 0;
+#endif
+		bool prefer_idle = schedtune_prefer_idle(p) > 0;
+		int tmp_target = find_best_target(p, boosted, prefer_idle);
+		if (tmp_target >= 0) {
+			target_cpu = tmp_target;
+			if ((boosted || prefer_idle) && idle_cpu(target_cpu))
+				return target_cpu;
 		}
 	}
 
