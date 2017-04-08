@@ -405,15 +405,11 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-format-truncation -Wno-bool-operation \
 		   -Wno-memset-elt-size -Wno-format-overflow -fno-store-merging \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
-<<<<<<< HEAD
-		   -std=gnu89
-=======
 		   -ffast-math -Wno-duplicate-decl-specifier \
 		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
 		   -Wno-return-local-addr -Wno-nonnull -Wno-bool-compare \
 		   -Wno-stringop-overflow -Wno-error=misleading-indentation \
 		   -std=gnu89 -Wno-error=maybe-uninitialized
->>>>>>> 0fb0482... Makefile: gcc8 fixes and disable warnings.
 
 BUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -773,8 +769,6 @@ KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
 # disable pointer signed / unsigned warnings in gcc 4.0
 KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
 
-<<<<<<< HEAD
-=======
 # disable gcc8 warnings
 KBUILD_CFLAGS += $(call cc-disable-warning, implicit-function-declaration)
 KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
@@ -783,7 +777,6 @@ KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-function)
 KBUILD_CFLAGS += $(call cc-disable-warning, misleading-indentation)
 
->>>>>>> 0fb0482... Makefile: gcc8 fixes and disable warnings.
 # disable invalid "can't wrap" optimizations for signed / pointers
 KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
 
