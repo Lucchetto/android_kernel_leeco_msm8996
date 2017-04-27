@@ -969,8 +969,6 @@ static int sched_rt_runtime_exceeded(struct rt_rq *rt_rq)
 	return 0;
 }
 
-<<<<<<< HEAD
-=======
 #define RT_SCHEDTUNE_INTERVAL 50000000ULL
 
 static void sched_rt_update_capacity_req(struct rq *rq);
@@ -1038,7 +1036,6 @@ static void start_schedtune_timer(struct sched_rt_entity *rt_se)
 			HRTIMER_MODE_REL_PINNED);
 }
 
->>>>>>> 00d7ee9... sched/eas: Squash revert of some eas commits from AOSP
 /*
  * Update the current task's runtime statistics. Skip current tasks that
  * are not in our scheduling class.
@@ -1409,8 +1406,6 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 
 	if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
 		enqueue_pushable_task(rq, p);
-<<<<<<< HEAD
-=======
 
 	if (!schedtune_task_boost(p))
 		return;
@@ -1439,7 +1434,6 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	schedtune_enqueue_task(p, cpu_of(rq));
 	sched_rt_update_capacity_req(rq);
 	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
->>>>>>> 00d7ee9... sched/eas: Squash revert of some eas commits from AOSP
 }
 
 static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
@@ -1451,8 +1445,6 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	walt_dec_cumulative_runnable_avg(rq, p);
 
 	dequeue_pushable_task(rq, p);
-<<<<<<< HEAD
-=======
 
 	if (!rt_se->schedtune_enqueued)
 		return;
@@ -1467,7 +1459,6 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	schedtune_dequeue_task(p, cpu_of(rq));
 	sched_rt_update_capacity_req(rq);
 	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
->>>>>>> 00d7ee9... sched/eas: Squash revert of some eas commits from AOSP
 }
 
 /*
@@ -1508,6 +1499,16 @@ static void yield_task_rt(struct rq *rq)
 static int find_lowest_rq(struct task_struct *task);
 
 /*
+ * Determine if destination CPU explicity disable softirqs,
+ * this is different from CPUs which are running softirqs.
+ * pc is the preempt count to check.
+ */
+static bool softirq_masked(int pc)
+{
+	return !!((pc & SOFTIRQ_MASK)>= SOFTIRQ_DISABLE_OFFSET);
+}
+
+/*
  * Return whether the task on the given cpu is currently non-preemptible
  * while handling a potentially long softint, or if the task is likely
  * to block preemptions soon because it is a ksoftirq thread that is
@@ -1519,11 +1520,17 @@ task_may_not_preempt(struct task_struct *task, int cpu)
 	__u32 softirqs = per_cpu(active_softirqs, cpu) |
 			 __IRQ_STAT(cpu, __softirq_pending);
 	struct task_struct *cpu_ksoftirqd = per_cpu(ksoftirqd, cpu);
+	int task_pc = 0;
+
+	if (task)
+		task_pc = task_preempt_count(task);
+
+	if (softirq_masked(task_pc))
+		return true;
+
 	return ((softirqs & LONG_SOFTIRQ_MASK) &&
 		(task == cpu_ksoftirqd ||
-		 task_thread_info(task)->preempt_count & SOFTIRQ_MASK));
-<<<<<<< HEAD
-=======
+		 task_pc & SOFTIRQ_MASK));
 }
 
 /*
