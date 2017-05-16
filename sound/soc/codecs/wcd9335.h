@@ -25,7 +25,7 @@
 #define TASHA_SB_PGD_PORT_RX_BASE   0x40
 #define TASHA_SB_PGD_PORT_TX_BASE   0x50
 
-#define TASHA_ZDET_SUPPORTED false
+#define TASHA_ZDET_SUPPORTED true
 /* z value defined in milliohm */
 #define TASHA_ZDET_VAL_32	32000
 #define TASHA_ZDET_VAL_400	400000
@@ -141,6 +141,8 @@ extern void *tasha_get_afe_config(struct snd_soc_codec *codec,
 				  enum afe_config_type config_type);
 extern int tasha_cdc_mclk_enable(struct snd_soc_codec *codec, int enable,
 				 bool dapm);
+extern int tasha_cdc_mclk_tx_enable(struct snd_soc_codec *codec, int enable,
+				    bool dapm);
 extern int tasha_enable_efuse_sensing(struct snd_soc_codec *codec);
 extern int tasha_mbhc_hs_detect(struct snd_soc_codec *codec,
 				struct wcd_mbhc_config *mbhc_cfg);
