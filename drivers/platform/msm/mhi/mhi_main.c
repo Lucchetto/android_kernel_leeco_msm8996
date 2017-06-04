@@ -1533,6 +1533,62 @@ enum MHI_EVENT_CCS get_cmd_pkt(struct mhi_device_ctxt *mhi_dev_ctxt,
 					 phy_trb_loc);
 	return MHI_EV_READ_CODE(EV_TRB_CODE, ev_pkt);
 }
+/*
+int parse_cmd_event(struct mhi_device_ctxt *mhi_dev_ctxt,
+				union mhi_event_pkt *ev_pkt, u32 event_index)
+{
+	int ret_val = 0;
+	union mhi_cmd_pkt *cmd_pkt = NULL;
+	u32 event_code = 0;
+
+	event_code = get_cmd_pkt(mhi_dev_ctxt, ev_pkt, &cmd_pkt, event_index);
+	switch (event_code) {
+	case MHI_EVENT_CC_SUCCESS:
+	{
+		u32 chan = 0;
+
+		MHI_TRB_GET_INFO(CMD_TRB_CHID, cmd_pkt, chan);
+		mhi_log(MHI_MSG_INFO, "CCE chan %d cmd %d\n", chan,
+				MHI_TRB_READ_INFO(CMD_TRB_TYPE, cmd_pkt));
+		switch (MHI_TRB_READ_INFO(CMD_TRB_TYPE, cmd_pkt)) {
+		case MHI_PKT_TYPE_RESET_CHAN_CMD:
+			ret_val = reset_chan_cmd(mhi_dev_ctxt, cmd_pkt);
+			if (ret_val)
+				mhi_log(MHI_MSG_INFO,
+				"Failed to process reset cmd ret %d\n",
+				ret_val);
+			break;
+		case MHI_PKT_TYPE_STOP_CHAN_CMD:
+			if (ret_val) {
+				mhi_log(MHI_MSG_INFO,
+						"Failed to set chan state\n");
+				return ret_val;
+			}
+			break;
+		case MHI_PKT_TYPE_START_CHAN_CMD:
+			ret_val = start_chan_cmd(mhi_dev_ctxt, cmd_pkt);
+			if (ret_val)
+				mhi_log(MHI_MSG_INFO,
+					"Failed to process reset cmd\n");
+			break;
+		default:
+			mhi_log(MHI_MSG_INFO,
+				"Bad cmd type 0x%x\n",
+				MHI_TRB_READ_INFO(CMD_TRB_TYPE, cmd_pkt));
+			break;
+		}
+		mhi_dev_ctxt->mhi_chan_pend_cmd_ack[chan] = MHI_CMD_NOT_PENDING;
+		atomic_dec(&mhi_dev_ctxt->counters.outbound_acks);
+		break;
+	}
+	default:
+		mhi_log(MHI_MSG_INFO, "Unhandled mhi completion code\n");
+		break;
+	}
+	ctxt_del_element(mhi_dev_ctxt->mhi_local_cmd_ctxt, NULL);
+	return 0;
+}
+#*/
 
 int mhi_poll_inbound(struct mhi_client_handle *client_handle,
 		     struct mhi_result *result)
