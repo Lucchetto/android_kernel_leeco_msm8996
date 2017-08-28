@@ -1292,7 +1292,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 				!ctrl->gpio_conf->gpio_num_info) {
 				pr_err("%s gpio index %d >= max %d\n", __func__,
 					power_setting->seq_val,
-					SENSOR_GPIO_MAX);
+					CAM_VREG_MAX);
 				goto power_up_failed;
 			}
 			if (!ctrl->gpio_conf->gpio_num_info->valid
