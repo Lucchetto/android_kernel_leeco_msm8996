@@ -866,13 +866,6 @@ int32_t msm_sensor_driver_probe(void *setting,
 	pr_err("%s print: module_id 0x%x", __func__, slave_info->sensor_id_info.module_id);
 #endif
 
-	if (slave_info->is_init_params_valid) {
-		CDBG("position %d",
-			slave_info->sensor_init_params.position);
-		CDBG("mount %d",
-			slave_info->sensor_init_params.sensor_mount_angle);
-	}
-
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
 		pr_err("failed: invalid camera id %d max %d",
@@ -897,17 +890,24 @@ int32_t msm_sensor_driver_probe(void *setting,
 		 * Different sensor on this camera slot has been connected
 		 * and probe already succeeded for that sensor. Ignore this
 		 * probe
+		 *
+		 * Besieds sensor id,
+		 * Module id and VCM id also need to use to determine a whole camera module
 		 */
-		if (slave_info->sensor_id_info.sensor_id ==
-			s_ctrl->sensordata->cam_slave_info->
-				sensor_id_info.sensor_id &&
-			!(strcmp(slave_info->sensor_name,
-			s_ctrl->sensordata->cam_slave_info->sensor_name))) {
-			pr_err("slot%d: sensor name: %s sensor id%d already probed\n",
+		if ((slave_info->sensor_id_info.sensor_id ==
+			s_ctrl->sensordata->cam_slave_info->sensor_id_info.sensor_id) &&
+			(s_ctrl->sensordata->cam_slave_info->sensor_id_info.module_id ==
+			slave_info->sensor_id_info.module_id) &&
+			(s_ctrl->sensordata->cam_slave_info->sensor_id_info.vcm_id ==
+			slave_info->sensor_id_info.vcm_id)) {
+			pr_err("slot%d:sensor id %d probed%d, module id %d probed%d,vcm id %d, probed %d\n",
 				slave_info->camera_id,
-				slave_info->sensor_name,
-				s_ctrl->sensordata->cam_slave_info->
-					sensor_id_info.sensor_id);
+				s_ctrl->sensordata->cam_slave_info->sensor_id_info.sensor_id,
+				slave_info->sensor_id_info.sensor_id,
+				s_ctrl->sensordata->cam_slave_info->sensor_id_info.module_id,
+				slave_info->sensor_id_info.module_id,
+				s_ctrl->sensordata->cam_slave_info->sensor_id_info.vcm_id,
+				slave_info->sensor_id_info.vcm_id);
 			msm_sensor_fill_sensor_info(s_ctrl,
 				probed_info, entity_name);
 		} else
@@ -943,6 +943,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 	camera_info->sensor_id_reg_addr =
 		slave_info->sensor_id_info.sensor_id_reg_addr;
 	camera_info->sensor_id = slave_info->sensor_id_info.sensor_id;
+
 #ifndef LETV_SINGLE_MODULE_VENDOR
 	camera_info->camera_id = slave_info->camera_id;
 	camera_info->module_id = slave_info->sensor_id_info.module_id;
