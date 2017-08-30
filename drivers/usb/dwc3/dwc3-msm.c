@@ -2821,39 +2821,6 @@ static int dwc3_msm_get_clk_gdsc(struct dwc3_msm *mdwc)
 	return 0;
 }
 
-static int usbheadset_resume_pm_event(struct notifier_block *notifier,
-	   unsigned long event, void *data)
-{
-	struct fb_event *evdata = data;
-	struct dwc3_msm *mdwc = _msm_dwc;
-	ktime_t start, diff;
-	typec_port_state port_state;
-
-	if (!mdwc)
-		return 0;
-
-	start = ktime_get();
-
-	port_state = cclogic_get_port_state();
-
-	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
-		if (mdwc->in_host_mode && !mdwc->vbus_on && (TYPEC_PORT_DFP == port_state))
-			_msm_usb_vbus_on(NULL);
-	}
-
-	diff = ktime_sub(ktime_get(), start);
-	if (ktime_to_ms(diff) > 1000)
-		printk(KERN_EMERG "usbheadset_resume_pm_event timeout \
-		       %d ms\n", (int)ktime_to_ms(diff));
-
-	return 0;
-}
-
-static struct notifier_block usbheadset_pm_resume_notifier_block = {
-	.notifier_call = usbheadset_resume_pm_event,
-};
-
-
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
 	struct device_node *node = pdev->dev.of_node, *dwc3_node;
@@ -3203,7 +3170,6 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	device_init_wakeup(mdwc->dev, 1);
 	pm_stay_awake(mdwc->dev);
-	fb_register_client(&usbheadset_pm_resume_notifier_block);
 
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
@@ -3345,8 +3311,6 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 			mdwc->vbus_reg = NULL;
 			return -EPROBE_DEFER;
 		}
-		mdwc->vbus_on = 0;
-		_msm_usb_vbus_on(mdwc);
 	}
 
 	if (on) {
@@ -3911,10 +3875,7 @@ ret:
 	return;
 }
 
-extern int cclogic_get_audio_mode(void);
 #ifdef CONFIG_PM_SLEEP
-int usb_vbus_suspend = 0;
-extern int letv_audio_mode_supported(void *data);
 static int dwc3_msm_pm_suspend(struct device *dev)
 {
 	int ret = 0;
@@ -3933,11 +3894,7 @@ static int dwc3_msm_pm_suspend(struct device *dev)
 	ret = dwc3_msm_suspend(mdwc);
 	if (!ret)
 		atomic_set(&mdwc->pm_suspended, 1);
-	if (mdwc->vbus_on && letv_audio_mode_supported(NULL) &&
-	    cclogic_get_audio_mode() == 0) {
-		_msm_usb_vbus_off(NULL);
-		mdelay(300);
-	}
+
 	return ret;
 }
 
