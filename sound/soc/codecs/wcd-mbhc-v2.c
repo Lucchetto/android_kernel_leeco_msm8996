@@ -61,6 +61,7 @@
 static struct wake_lock mbhc_button_wakelock;
 static struct wcd_mbhc *g_mbhc;
 static struct delayed_work mbhc_pending_dwork;
+static struct delayed_work mbhc_in3p_button_dwork;
 static int det_extn_cable_en;
 static int hph_irq = 0;
 static int headset_detect_enable = -1;
@@ -1177,7 +1178,7 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 	struct snd_soc_codec *codec;
 	enum wcd_mbhc_plug_type plug_type = MBHC_PLUG_TYPE_INVALID;
 	unsigned long timeout;
-	//u16 hs_comp_res, hphl_sch, mic_sch, btn_result;
+	u16 hs_comp_res, btn_result;
 	bool wrk_complete = false;
 	//int pt_gnd_mic_swap_cnt = 0;
 	//int no_gnd_mic_swap_cnt = 0;
@@ -1837,9 +1838,6 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		/* Disable HW FSM */
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_FSM_EN, 0);
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_ISRC_CTL, 0);
-		wcd_mbhc_hs_elec_irq(mbhc, WCD_MBHC_ELEC_HS_INS, false);
-		wcd_mbhc_hs_elec_irq(mbhc, WCD_MBHC_ELEC_HS_REM, false);
-
 	}
 
 	mbhc->in_swch_irq_handler = false;
