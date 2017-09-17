@@ -3006,11 +3006,11 @@
 		qcom,bcl-hotplug-list = <&CPU2 &CPU3>;
 		qcom,bcl-soc-hotplug-list = <&CPU2 &CPU3>;
 		qcom,ibat-monitor {
-			qcom,low-threshold-uamp = <200000>;
-			qcom,high-threshold-uamp = <500000>;
+			qcom,low-threshold-uamp = <3500000>;
+			qcom,high-threshold-uamp = <4500000>;
 			qcom,mitigation-freq-khz = <576000>;
 			qcom,vph-high-threshold-uv = <3500000>;
-			qcom,vph-low-threshold-uv = <3400000>;
+			qcom,vph-low-threshold-uv = <3300000>;
 			qcom,soc-low-threshold = <5>;
 			qcom,thermal-handle = <&msm_thermal_freq>;
 		};
