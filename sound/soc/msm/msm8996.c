@@ -64,7 +64,6 @@
 #define WSA8810_NAME_2 "wsa881x.20170212"
 #endif
 
-#ifdef CONFIG_VENDOR_LEECO
 static bool usb_typec_letv;
 static bool usb_typec_pid;
 extern void cclogic_set_audio_mode(bool mode);
@@ -72,7 +71,6 @@ extern void usb_audio_if_letv(bool *letv, int *pid);
 static int usb_typec_swap = -1;
 unsigned int voice_call_state = 0;
 bool typec_set_cc_state = false;
-#endif
 
 #ifdef CONFIG_SND_SOC_MAX98927
 extern int max98927_get_i2c_states(void);
@@ -107,7 +105,6 @@ static int msm_proxy_rx_ch = 2;
 static int hdmi_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int msm_tert_mi2s_tx_ch = 2;
 
-#ifdef CONFIG_VENDOR_LEECO
 static int msm_pri_mi2s_tx_ch = 2;
 static int msm_pri_mi2s_rx_ch = 2;
 static int msm_sec_mi2s_tx_ch = 2;
@@ -115,7 +112,6 @@ static int msm_sec_mi2s_rx_ch = 2;
 static int msm_tert_mi2s_rx_ch = 2;
 static int msm_quat_mi2s_tx_ch = 2;
 static int msm_quat_mi2s_rx_ch = 6;
-#endif
 
 static bool codec_reg_done;
 
@@ -161,7 +157,6 @@ static struct afe_clk_set mi2s_tx_clk = {
 	0,
 };
 
-#ifdef CONFIG_VENDOR_LEECO
 static int pri_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
 static int sec_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
 static int tert_mi2s_sample_rate = SAMPLING_RATE_48KHZ;
@@ -300,7 +295,6 @@ static const char *const quat_mi2s_tx_ch_text[] = {"One", "Two", "Three", "Four"
 static const char *const quat_mi2s_rx_ch_text[] = {"One", "Two", "Three", "Four",
 						   "Five", "Six", "Seven",
 						   "Eight"};
-#endif
 
 #ifdef CONFIG_SND_SOC_WSA881X
 struct msm8996_wsa881x_dev_info {
@@ -357,15 +351,9 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = true,
 	.key_code[0] = KEY_MEDIA,
-#ifdef CONFIG_VENDOR_LEECO
 	.key_code[1] = KEY_VOLUMEUP,
 	.key_code[2] = KEY_VOLUMEDOWN,
 	.key_code[3] = KEY_VOICECOMMAND,
-#else
-	.key_code[1] = KEY_VOICECOMMAND,
-	.key_code[2] = KEY_VOLUMEUP,
-	.key_code[3] = KEY_VOLUMEDOWN,
-#endif
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
@@ -377,12 +365,9 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.enable_anc_mic_detect = false,
 };
 
-#ifdef CONFIG_VENDOR_LEECO
 atomic_t tert_mi2s_rsc_ref;
 static u32 tert_ext_mclk_rate = 0;
-#endif
 
-#ifdef CONFIG_VENDOR_LEECO
 static int usb_typec_swap_parm_set(const char *val, struct kernel_param *kp)
 {
 	param_set_int(val, kp);
@@ -408,7 +393,6 @@ static int usb_typec_swap_parm_set(const char *val, struct kernel_param *kp)
 }
 module_param_call(usb_typec_swap, usb_typec_swap_parm_set,
 		param_get_int, &usb_typec_swap, 0664);
-#endif
 
 static inline int param_is_mask(int p)
 {
@@ -785,20 +769,16 @@ static const struct snd_soc_dapm_widget msm8996_dapm_widgets[] = {
 	SND_SOC_DAPM_SPK("hifi amp", msm_hifi_ctrl_event),
 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
-#ifdef CONFIG_VENDOR_LEECO
 	SND_SOC_DAPM_MIC("REC ANC Analog Mic", NULL),
 	SND_SOC_DAPM_MIC("ANC Analog Mic", NULL),
-#endif
 	SND_SOC_DAPM_MIC("ANCRight Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("ANCLeft Headset Mic", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic4", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic6", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic7", NULL),
 	SND_SOC_DAPM_MIC("Analog Mic8", NULL),
-#ifdef CONFIG_VENDOR_LEECO
 	SND_SOC_DAPM_MIC("USB Type-c Back Mic", NULL),
 	SND_SOC_DAPM_MIC("Main Mic2", NULL),
-#endif
 
 	SND_SOC_DAPM_MIC("Digital Mic0", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
@@ -1317,7 +1297,6 @@ static int msm_slim_0_tx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
-#ifdef CONFIG_VENDOR_LEECO
 static int msm_pri_mi2s_rx_ch_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
@@ -1461,7 +1440,6 @@ static int msm_quat_mi2s_tx_ch_put(struct snd_kcontrol *kcontrol,
 		 msm_quat_mi2s_tx_ch);
 	return 1;
 }
-#endif
 
 static int msm_slim_1_tx_ch_get(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
@@ -1645,7 +1623,6 @@ static int msm8996_auxpcm_rate_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-#ifdef CONFIG_VENDOR_LEECO
 static int mi2s_get_sample_rate(int sample_rate)
 {
 	int sample_rate_val = 0;
@@ -1925,7 +1902,6 @@ static int quat_mi2s_bit_format_put(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-#endif
 
 static int msm_proxy_rx_ch_get(struct snd_kcontrol *kcontrol,
 			       struct snd_ctl_elem_value *ucontrol)
@@ -2006,7 +1982,6 @@ static int msm8996_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
-#ifndef CONFIG_VENDOR_LEECO
 static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				     struct snd_pcm_hw_params *params)
 {
@@ -2020,7 +1995,6 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	channels->min = channels->max = msm_tert_mi2s_tx_ch;
 	return 0;
 }
-#endif
 
 static int legacy_msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 {
@@ -2217,7 +2191,6 @@ static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
-#ifdef CONFIG_VENDOR_LEECO
 static int msm_pri_mi2s_rx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
 {
@@ -2923,7 +2896,6 @@ static const struct soc_enum msm8996_mi2s_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(8, quat_mi2s_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, voice_call_state_text),
 };
-#endif
 
 static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, spk_function),
@@ -2993,7 +2965,6 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("VI_FEED_TX Channels", msm_snd_enum[12],
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
 
-#ifdef CONFIG_VENDOR_LEECO
 	SOC_ENUM_EXT("PRI_MI2S BitWidth", msm8996_mi2s_snd_enum[0],
 			pri_mi2s_bit_format_get, pri_mi2s_bit_format_put),
 	SOC_ENUM_EXT("SEC_MI2S BitWidth", msm8996_mi2s_snd_enum[0],
@@ -3030,7 +3001,6 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			usb_headset_analog_digital_get, usb_headset_analog_digital_set),
 	SOC_ENUM_EXT("VOICE_CALL State", msm8996_mi2s_snd_enum[10],
 			voice_call_state_get, voice_call_state_set),
-#endif
 };
 
 static bool msm8996_swap_gnd_mic(struct snd_soc_codec *codec)
@@ -4378,7 +4348,6 @@ static struct snd_soc_dai_link msm8996_common_dai_links[] = {
 		.codec_name = "snd-soc-dummy",
 		.be_id = MSM_FRONTEND_DAI_VOICE2,
 	},
-#ifdef CONFIG_VENDOR_LEECO
 	{
 		.name = "Primary MI2S RX_Hostless",
 		.stream_name = "Primary MI2S_RX Hostless Playback",
@@ -4484,7 +4453,6 @@ static struct snd_soc_dai_link msm8996_common_dai_links[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
-#endif
 };
 
 static struct snd_soc_dai_link msm8996_tasha_fe_dai_links[] = {
@@ -4714,16 +4682,10 @@ static struct snd_soc_dai_link msm8996_common_be_dai_links[] = {
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX,
-#ifdef CONFIG_VENDOR_LEECO
 		.be_hw_params_fixup = msm_tert_mi2s_tx_be_hw_params_fixup,
 		.ops = &legacy_msm8996_mi2s_be_ops,
-#else
-		.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
-		.ops = &msm8996_mi2s_be_ops,
-#endif
 		.ignore_suspend = 1,
 	},
-#ifdef CONFIG_VENDOR_LEECO
 	{
 		.name = LPASS_BE_PRI_MI2S_RX,
 		.stream_name = "Primary MI2S Playback",
@@ -4780,7 +4742,6 @@ static struct snd_soc_dai_link msm8996_common_be_dai_links[] = {
 		.ops = &msm8996_quat_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#endif
 };
 
 static struct snd_soc_dai_link msm8996_tasha_be_dai_links[] = {
@@ -4959,7 +4920,6 @@ static struct snd_soc_dai_link msm8996_hdmi_dai_link[] = {
 	},
 };
 
-#ifdef CONFIG_VENDOR_LEECO
 static struct snd_soc_dai_link msm8996_hifi_dai_link[] = {
 	/* HIFI BACK END DAI Link */
 		{
@@ -5009,7 +4969,6 @@ static struct snd_soc_dai_link msm8996_smartpa_dai_link[] = {
 			.ignore_suspend = 1,
 	},
 };
-#endif
 
 #ifdef CONFIG_SND_SOC_MAX98927
 static struct snd_soc_dai_link msm8996_max98927_dai_link[] = {
@@ -5050,13 +5009,9 @@ static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_tasha_fe_dai_links) +
 			 ARRAY_SIZE(msm8996_common_be_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_be_dai_links) +
-#ifdef CONFIG_VENDOR_LEECO
 			 ARRAY_SIZE(msm8996_hdmi_dai_link) +
 			 ARRAY_SIZE(msm8996_hifi_dai_link) +
 			 ARRAY_SIZE(msm8996_smartpa_dai_link)];
-#else
-			 ARRAY_SIZE(msm8996_hdmi_dai_link)];
-#endif
 
 #ifdef CONFIG_SND_SOC_WSA881X
 static int msm8996_wsa881x_init(struct snd_soc_component *component)
@@ -5215,9 +5170,7 @@ static int msm8996_prepare_us_euro(struct snd_soc_card *card)
 				__func__, pdata->us_euro_gpio, ret);
 			return ret;
 		}
-#ifdef CONFIG_VENDOR_LEECO
 		gpio_direction_output(pdata->us_euro_gpio, 0);
-#endif
 	}
 
 	return 0;
@@ -5307,7 +5260,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		dev_dbg(dev, "%s(): No hdmi audio support\n", __func__);
 	}
 
-#ifdef CONFIG_VENDOR_LEECO
 	if (of_property_read_bool(dev->of_node, "letv,hifi-audio")) {
 		pr_info("%s(): hifi audio support present\n",
 				__func__);
@@ -5327,7 +5279,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	} else {
 		pr_info("%s(): No smartpa audio support\n", __func__);
 	}
-#endif
 
 #ifdef CONFIG_SND_SOC_MAX98927
 	if (of_property_read_bool(dev->of_node, "letv,smartpa-audio-max98927")) {
@@ -5557,6 +5508,12 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
 
+	atomic_set(&msm_pri_mi2s_data.mi2s_rsc_ref, 0);
+        atomic_set(&msm_sec_mi2s_data.mi2s_rsc_ref, 0);
+        atomic_set(&msm_tert_mi2s_data.mi2s_rsc_ref, 0);
+        atomic_set(&msm_quat_mi2s_data.mi2s_rsc_ref, 0);
+        atomic_set(&tert_mi2s_rsc_ref, 0);
+
 	ret = snd_soc_of_parse_card_name(card, "qcom,model");
 	if (ret) {
 		dev_err(&pdev->dev, "parse card name failed, err:%d\n",
@@ -5681,10 +5638,8 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		dev_info(&pdev->dev, "msm8996_prepare_us_euro failed (%d)\n",
 			ret);
-#ifdef CONFIG_VENDOR_LEECO
 	usb_typec_letv = false;
 	usb_typec_pid = 0;
-#endif
 
 	return 0;
 err:
