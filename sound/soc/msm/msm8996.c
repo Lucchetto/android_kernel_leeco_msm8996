@@ -1982,19 +1982,6 @@ static int msm8996_hdmi_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
-static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
-				     struct snd_pcm_hw_params *params)
-{
-	struct snd_interval *rate = hw_param_interval(params,
-					SNDRV_PCM_HW_PARAM_RATE);
-	struct snd_interval *channels = hw_param_interval(params,
-					SNDRV_PCM_HW_PARAM_CHANNELS);
-
-	pr_debug("%s: channel:%d\n", __func__, msm_tert_mi2s_tx_ch);
-	rate->min = rate->max = SAMPLING_RATE_48KHZ;
-	channels->min = channels->max = msm_tert_mi2s_tx_ch;
-	return 0;
-}
 
 static int legacy_msm8996_mi2s_snd_startup(struct snd_pcm_substream *substream)
 {
@@ -2033,6 +2020,7 @@ static void legacy_msm8996_mi2s_snd_shutdown(struct snd_pcm_substream *substream
 				&mi2s_tx_clk);
 	if (ret < 0)
 		pr_err("%s: afe lpass clock failed, err:%d\n", __func__, ret);
+	atomic_dec(&tert_mi2s_rsc_ref);
 }
 
 static struct snd_soc_ops legacy_msm8996_mi2s_be_ops = {
@@ -3107,6 +3095,7 @@ static int msm8996_wcd93xx_codec_up(struct snd_soc_codec *codec)
 			 * here. So, wait for 50msec before checking ADSP state
 			 */
 			msleep(50);
+			pr_err("%s: Stuipid bloody ADSP Audio isn't ready\n", __func__);
 		} else {
 			pr_debug("%s: ADSP Audio is ready\n", __func__);
 			adsp_ready = 1;
