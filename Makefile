@@ -407,12 +407,15 @@ KBUILD_CPPFLAGS := -D__KERNEL__
 
 KBUILD_CFLAGS   := $(GRAPHITE) -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
-		   -Werror-implicit-function-declaration \
-		   -Wno-format-security \
+		   -Wno-format-security -Wno-error=unused-const-variable \
 		   -Wno-format-truncation -Wno-bool-operation \
 		   -Wno-memset-elt-size -Wno-format-overflow -fno-store-merging \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
-		   -std=gnu89
+		   -ffast-math -Wno-duplicate-decl-specifier \
+		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
+		   -Wno-return-local-addr -Wno-nonnull -Wno-bool-compare \
+		   -Wno-stringop-overflow -Wno-error=misleading-indentation \
+		   -std=gnu89 -Wno-error=maybe-uninitialized
 
 # Choose Cortex-A57 as the target which is the closest to Kryo.
 KBUILD_CFLAGS	+= -mcpu=cortex-a57+crc+crypto
@@ -786,6 +789,14 @@ KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
 
 # disable pointer signed / unsigned warnings in gcc 4.0
 KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
+
+# disable gcc8 warnings
+KBUILD_CFLAGS += $(call cc-disable-warning, implicit-function-declaration)
+KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
+KBUILD_CFLAGS += $(call cc-disable-warning, array-bounds)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-function)
+KBUILD_CFLAGS += $(call cc-disable-warning, misleading-indentation)
 
 # disable invalid "can't wrap" optimizations for signed / pointers
 KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
