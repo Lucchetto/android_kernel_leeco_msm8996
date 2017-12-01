@@ -5591,7 +5591,6 @@ static int __vsync_retire_setup(struct msm_fb_data_type *mfd)
 {
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	char name[24];
-	struct sched_param param = { .sched_priority = 5 };
 
 	struct sched_param param = { .sched_priority = 9 };
 
