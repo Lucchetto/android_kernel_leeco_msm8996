@@ -181,7 +181,7 @@ static void update_policy_online(void)
 	put_online_cpus();
 }
 
-static void do_input_boost_rem(struct work_struct *work)
+static void do_input_boost_rem(struct kthread_work *work)
 {
 	unsigned int i, ret;
 	struct cpu_sync *i_sync_info;
