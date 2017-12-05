@@ -170,14 +170,13 @@ have_snum:
 				hashinfo->bhash_size)];
 		spin_lock(&head->lock);
 
-		if (inet_is_local_reserved_port(net, snum) &&
-		    !sysctl_reserved_port_bind) {
+		if (inet_is_local_reserved_port(net, snum)) {
 			ret = 1;
 			goto fail_unlock;
 		}
 
 		inet_bind_bucket_for_each(tb, &head->chain)
-			if (net_eq(ib_net(tb), net) && tb->port == snum)
+			if (net_eq(ib_net(tb), net) && tb->port == snum) {
 				goto tb_found;
 	}
 	tb = NULL;

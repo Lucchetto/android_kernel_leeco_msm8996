@@ -2140,8 +2140,6 @@ usbnet_probe (struct usb_interface *udev, const struct usb_device_id *prod)
 	// NOTE net->name still not usable ...
 	if (info->bind) {
 		status = info->bind (dev, udev);
-		if (status < 0)
-			goto free_netdevice;
 
 		// heuristic:  "usb%d" for links we know are two-host,
 		// else "eth%d" when there's reasonable doubt.  userspace
