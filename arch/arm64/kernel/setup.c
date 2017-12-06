@@ -86,7 +86,6 @@ unsigned int compat_elf_hwcap2 __read_mostly;
 #endif
 
 DECLARE_BITMAP(cpu_hwcaps, ARM64_NCAPS);
-
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
 
