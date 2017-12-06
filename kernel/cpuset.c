@@ -2066,6 +2066,8 @@ static void cpuset_bind(struct cgroup_subsys_state *root_css)
 	mutex_unlock(&cpuset_mutex);
 }
 
+/*
+ *Should be removed
 
 static int cpuset_allow_attach(struct cgroup_subsys_state *css,
 			       struct cgroup_taskset *tset)
@@ -2083,6 +2085,7 @@ static int cpuset_allow_attach(struct cgroup_subsys_state *css,
 
 	return 0;
 }
+ */
 
 /*
  * Make sure the new task conform to the current state of its parent,
@@ -2104,7 +2107,6 @@ struct cgroup_subsys cpuset_cgrp_subsys = {
 	.css_offline	= cpuset_css_offline,
 	.css_free	= cpuset_css_free,
 	.can_attach	= cpuset_can_attach,
-	.allow_attach   = cpuset_allow_attach,
 	.cancel_attach	= cpuset_cancel_attach,
 	.attach		= cpuset_attach,
 	.bind		= cpuset_bind,
