@@ -7706,6 +7706,7 @@ SYSCALL_DEFINE5(perf_event_open,
 	}
 
 	if (move_group) {
+
 		gctx = __perf_event_ctx_lock_double(group_leader, ctx);
 
 		/*
@@ -7772,9 +7773,8 @@ SYSCALL_DEFINE5(perf_event_open,
 
 	if (move_group) {
 		perf_event_ctx_unlock(group_leader, gctx);
-		put_ctx(gctx);
+		mutex_unlock(&gctx->mutex);
 	}
-	mutex_unlock(&ctx->mutex);
 	if (group_leader)
 		mutex_unlock(&group_leader->group_leader_mutex);
 
@@ -7817,6 +7817,7 @@ err_cpus:
 err_task:
 	if (task)
 		put_task_struct(task);
+	mutex_unlock(&ctx->mutex);
 err_group_fd:
 	if (group_leader)
 		mutex_unlock(&group_leader->group_leader_mutex);
