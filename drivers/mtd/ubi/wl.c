@@ -438,6 +438,7 @@ static struct ubi_wl_entry *wl_get_wle(struct ubi_device *ubi)
 	rb_erase(&e->u.rb, &ubi->free);
 	ubi->free_count--;
 	dbg_wl("PEB %d EC %d", e->pnum, e->ec);
+
 #ifndef CONFIG_MTD_UBI_FASTMAP
 	/* We have to enqueue e only if fastmap is disabled,
 	 * is fastmap enabled prot_queue_add() will be called by
