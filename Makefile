@@ -306,7 +306,7 @@ HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fomit-fram
 HOSTCXXFLAGS = -Ofast $(GRAPHITE)
 
 ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
-HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
+HOSTCFLAGS  += -Wno-maybe-uninitialized -Wno-tautological-compare -Wno-unused-value -Wno-unused-parameter \
 		-Wno-missing-field-initializers -fno-delete-null-pointer-checks
 endif
 
@@ -385,7 +385,7 @@ AFLAGS_MODULE   =
 LDFLAGS_MODULE  = $(GRAPHITE) --strip-debug
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
-CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im
+CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im -Wno-maybe-uninitialized
 CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 
 
@@ -412,13 +412,13 @@ KBUILD_CFLAGS   := $(GRAPHITE) -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs 
 		   -fno-strict-aliasing -fno-common \
 		   -Wno-format-security -Wno-error=unused-const-variable \
 		   -Wno-format-truncation -Wno-bool-operation \
-		   -Wno-memset-elt-size -Wno-format-overflow -fno-store-merging \
+		   -Wno-memset-elt-size -Wno-tautological-compare -Wno-format-overflow -fno-store-merging \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -ffast-math -Wno-duplicate-decl-specifier \
 		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
 		   -Wno-return-local-addr -Wno-nonnull -Wno-bool-compare \
 		   -Wno-stringop-overflow -Wno-error=misleading-indentation \
-		   -std=gnu89 -Wno-error=maybe-uninitialized
+		   -std=gnu89
 
 # Choose Cortex-A57 as the target which is the closest to Kryo.
 KBUILD_CFLAGS	+= -mcpu=cortex-a57+crc+crypto
@@ -640,7 +640,6 @@ all: vmlinux
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,array-bounds,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,unused-const-variable,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
@@ -717,6 +716,7 @@ KBUILD_CPPFLAGS += $(call cc-option,-Wno-unknown-warning-option,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
+KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
 # CLANG uses a _MergedGlobals as optimization, but this breaks modpost, as the
@@ -795,7 +795,6 @@ KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
 
 # disable gcc8 warnings
 KBUILD_CFLAGS += $(call cc-disable-warning, implicit-function-declaration)
-KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
 KBUILD_CFLAGS += $(call cc-disable-warning, array-bounds)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-function)
