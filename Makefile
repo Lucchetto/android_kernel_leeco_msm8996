@@ -64,7 +64,7 @@ unexport GREP_OPTIONS
 #
 # To put more focus on warnings, be less verbose as default
 # Use 'make V=1' to see the full commands
-
+KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
 ifeq ("$(origin V)", "command line")
   KBUILD_VERBOSE = $(V)
 endif
@@ -304,7 +304,7 @@ HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-p
 HOSTCXXFLAGS = -O2
 
 ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
-HOSTCFLAGS  += -Wno-maybe-uninitialized -Wno-tautological-compare -Wno-unused-value -Wno-unused-parameter \
+HOSTCFLAGS  += -Wno-error=maybe-uninitialized -Wno-maybe-uninitialized -Wno-tautological-compare -Wno-unused-value -Wno-unused-parameter \
 		-Wno-missing-field-initializers -fno-delete-null-pointer-checks
 endif
 
@@ -357,7 +357,7 @@ include $(srctree)/scripts/Kbuild.include
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
 LD		= $(CROSS_COMPILE)ld
-REAL_CC		= $(CROSS_COMPILE)gcc -Wno-maybe-uninitialized
+REAL_CC		= $(CROSS_COMPILE)gcc -Wno-error=maybe-uninitialized -Wno-maybe-uninitialized
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -383,7 +383,7 @@ AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
-CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im -Wno-maybe-uninitialized
+CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fno-tree-loop-im -Wno-error=maybe-uninitialized -Wno-maybe-uninitialized
 CFLAGS_KCOV	= -fsanitize-coverage=trace-pc
 
 
@@ -406,7 +406,7 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-maybe-uninitialized -Wno-trigraphs \
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-error=maybe-uninitialized -Wno-maybe-uninitialized -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Wno-format-security -Wno-error=unused-const-variable \
 		   -Wno-format-truncation -Wno-bool-operation \
@@ -699,7 +699,7 @@ KBUILD_CPPFLAGS += $(call cc-option,-Wno-unknown-warning-option,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
 KBUILD_CFLAGS += $(call cc-disable-warning, format-invalid-specifier)
 KBUILD_CFLAGS += $(call cc-disable-warning, gnu)
-KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
+KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized,)
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
 KBUILD_CFLAGS += $(call cc-disable-warning, tautological-compare)
 # CLANG uses a _MergedGlobals as optimization, but this breaks modpost, as the
