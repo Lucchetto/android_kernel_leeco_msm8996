@@ -856,48 +856,6 @@ TRACE_EVENT(sched_boost_task,
 /*
  * Tracepoint for find_best_target
  */
-TRACE_EVENT(sched_find_best_target,
-
-	TP_PROTO(struct task_struct *tsk, bool prefer_idle,
-		unsigned long min_util, int start_cpu,
-		int best_idle, int best_active, int target),
-
-	TP_ARGS(tsk, prefer_idle, min_util, start_cpu,
-		best_idle, best_active, target),
-
-	TP_STRUCT__entry(
-		__array( char,	comm,	TASK_COMM_LEN	)
-		__field( pid_t,	pid			)
-		__field( unsigned long,	min_util	)
-		__field( bool,	prefer_idle		)
-		__field( int,	start_cpu		)
-		__field( int,	best_idle		)
-		__field( int,	best_active		)
-		__field( int,	target			)
-	),
-
-	TP_fast_assign(
-		memcpy(__entry->comm, tsk->comm, TASK_COMM_LEN);
-		__entry->pid		= tsk->pid;
-		__entry->min_util	= min_util;
-		__entry->prefer_idle	= prefer_idle;
-		__entry->start_cpu 	= start_cpu;
-		__entry->best_idle	= best_idle;
-		__entry->best_active	= best_active;
-		__entry->target		= target;
-	),
-
-	TP_printk("pid=%d comm=%s prefer_idle=%d start_cpu=%d "
-		  "best_idle=%d best_active=%d target=%d",
-		__entry->pid, __entry->comm,
-		__entry->prefer_idle, __entry->start_cpu,
-		__entry->best_idle, __entry->best_active,
-		__entry->target)
-);
-
-/*
- * Tracepoint for accounting sched group energy
- */
 TRACE_EVENT(sched_energy_diff,
 
 	TP_PROTO(struct task_struct *tsk, int scpu, int dcpu, int udelta,
@@ -1035,7 +993,6 @@ TRACE_EVENT(walt_update_task_ravg,
 		__field(	 int,	cpu			)
 		__field(	u64,	cs			)
 		__field(	u64,	ps			)
-		__field(unsigned long,	util			)
 		__field(	u32,	curr_window		)
 		__field(	u32,	prev_window		)
 		__field(	u32,	active_windows		)
@@ -1066,14 +1023,14 @@ TRACE_EVENT(walt_update_task_ravg,
 	),
 
 	TP_printk("wc %llu ws %llu delta %llu event %d cpu %d cur_freq %u cur_pid %d task %d (%s) ms %llu delta %llu demand %u sum %u irqtime %llu"
-		" cs %llu ps %llu util %lu cur_window %u prev_window %u active_wins %u"
+		" cs %llu ps %llu cur_window %u prev_window %u active_wins %u"
 		, __entry->wallclock, __entry->win_start, __entry->delta,
 		__entry->evt, __entry->cpu,
 		__entry->cur_freq, __entry->cur_pid,
 		__entry->pid, __entry->comm, __entry->mark_start,
 		__entry->delta_m, __entry->demand,
 		__entry->sum, __entry->irqtime,
-		__entry->cs, __entry->ps, __entry->util,
+		__entry->cs, __entry->ps,
 		__entry->curr_window, __entry->prev_window,
 		  __entry->active_windows
 		)
@@ -1106,8 +1063,7 @@ TRACE_EVENT(walt_update_history,
 		__entry->samples        = samples;
 		__entry->evt            = evt;
 		__entry->demand         = p->ravg.demand;
-		__entry->walt_avg	= (__entry->demand << 10);
-		do_div(__entry->walt_avg, walt_ravg_window);
+		__entry->walt_avg = (__entry->demand << 10) / walt_ravg_window,
 		__entry->pelt_avg	= p->se.avg.util_avg;
 		memcpy(__entry->hist, p->ravg.sum_history,
 					RAVG_HIST_SIZE_MAX * sizeof(u32));

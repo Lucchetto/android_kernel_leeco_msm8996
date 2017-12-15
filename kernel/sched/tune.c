@@ -17,7 +17,6 @@ bool schedtune_initialized = false;
 
 int sysctl_sched_cfs_boost __read_mostly;
 
-extern struct reciprocal_value schedtune_spc_rdiv;
 extern struct target_nrg schedtune_target_nrg;
 
 /* Performance Boost region (B) threshold params */
@@ -206,7 +205,7 @@ schedtune_accept_deltas(int nrg_delta, int cap_delta,
  *    implementation especially for the computation of the per-CPU boost
  *    value
  */
-#define BOOSTGROUPS_COUNT 5
+#define BOOSTGROUPS_COUNT 4
 
 /* Array of configured boostgroups */
 static struct schedtune *allocated_group[BOOSTGROUPS_COUNT] = {
@@ -737,7 +736,6 @@ schedtune_init_cgroups(void)
 	for_each_possible_cpu(cpu) {
 		bg = &per_cpu(cpu_boost_groups, cpu);
 		memset(bg, 0, sizeof(struct boost_groups));
-		raw_spin_lock_init(&bg->lock);
 	}
 
 	pr_info("schedtune: configured to support %d boost groups\n",
@@ -948,12 +946,9 @@ schedtune_init(void)
 	pr_info("schedtune: configured to support global boosting only\n");
 #endif
 
-	schedtune_spc_rdiv = reciprocal_value(100);
-
 	return 0;
 
 nodata:
-	pr_warning("schedtune: disabled!\n");
 	rcu_read_unlock();
 	return -EINVAL;
 }

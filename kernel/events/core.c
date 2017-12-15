@@ -795,34 +795,6 @@ static enum hrtimer_restart perf_cpu_hrtimer_handler(struct hrtimer *hr)
 	return ret;
 }
 
-/* CPU is going down */
-void perf_cpu_hrtimer_cancel(int cpu)
-{
-	struct perf_cpu_context *cpuctx;
-	struct pmu *pmu;
-	unsigned long flags;
-
-	if (WARN_ON(cpu != smp_processor_id()))
-		return;
-
-	local_irq_save(flags);
-
-	rcu_read_lock();
-
-	list_for_each_entry_rcu(pmu, &pmus, entry) {
-		cpuctx = this_cpu_ptr(pmu->pmu_cpu_context);
-
-		if (pmu->task_ctx_nr == perf_sw_context)
-			continue;
-
-		hrtimer_cancel(&cpuctx->hrtimer);
-	}
-
-	rcu_read_unlock();
-
-	local_irq_restore(flags);
-}
-
 static void __perf_cpu_hrtimer_init(struct perf_cpu_context *cpuctx, int cpu)
 {
 	struct hrtimer *hr = &cpuctx->hrtimer;
@@ -843,8 +815,8 @@ static void __perf_cpu_hrtimer_init(struct perf_cpu_context *cpuctx, int cpu)
 
 	cpuctx->hrtimer_interval = ns_to_ktime(NSEC_PER_MSEC * timer);
 
-	hrtimer_init(hr, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
-	hr->function = perf_cpu_hrtimer_handler;
+	hrtimer_init(timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
+	timer->function = perf_mux_hrtimer_handler;
 }
 
 static void perf_cpu_hrtimer_restart(struct perf_cpu_context *cpuctx)
@@ -856,12 +828,11 @@ static void perf_cpu_hrtimer_restart(struct perf_cpu_context *cpuctx)
 	if (pmu->task_ctx_nr == perf_sw_context)
 		return;
 
-	if (hrtimer_active(hr))
-		return;
-
-	if (!hrtimer_callback_running(hr))
-		__hrtimer_start_range_ns(hr, cpuctx->hrtimer_interval,
-					 0, HRTIMER_MODE_REL_PINNED, 0);
+	if (hrtimer_is_queued(timer))
+		return 0;
+ 
+	hrtimer_start(timer, cpuctx->hrtimer_interval, HRTIMER_MODE_REL_PINNED);
+	return 0;
 }
 
 void perf_pmu_disable(struct pmu *pmu)
