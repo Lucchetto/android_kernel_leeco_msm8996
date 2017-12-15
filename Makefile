@@ -302,7 +302,6 @@ HOSTCXX      = $(CCACHE) g++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -Ofast -fomit-frame-pointer -std=gnu89 $(GRAPHITE)
 HOSTCXXFLAGS = -Ofast $(GRAPHITE)
 
-
 ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
 HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
 		-Wno-missing-field-initializers -fno-delete-null-pointer-checks
