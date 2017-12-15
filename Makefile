@@ -119,6 +119,9 @@ ifeq ($(KBUILD_SRC),)
 ifeq ("$(origin O)", "command line")
   KBUILD_OUTPUT := $(O)
 endif
+ccflags-y += -D__CHECK_ENDIAN__
+CFLAGS_trace.o := -I$(src)
+
 
 # That's our default target when none is given on the command line
 PHONY := _all
