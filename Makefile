@@ -410,7 +410,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-maybe-uninitialized -W
 		   -fno-strict-aliasing -fno-common \
 		   -Wno-format-security -Wno-error=unused-const-variable \
 		   -Wno-format-truncation -Wno-bool-operation \
-		   -Wno-memset-elt-size -Wno-tautological-compare -Wno-format-overflow -fno-store-merging \
+		   -Wno-memset-elt-size -Wno-tautological-compare -Wno-format-overflow \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -ffast-math -Wno-duplicate-decl-specifier \
 		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
@@ -636,7 +636,7 @@ KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -O2
+KBUILD_CFLAGS	+= -Ofast
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
