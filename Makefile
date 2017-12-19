@@ -383,13 +383,8 @@ GCC_OPT		:=	-ffast-math \
 
 
 AS		= $(CROSS_COMPILE)as
-<<<<<<< HEAD
-LD		= $(CROSS_COMPILE)ld
-REAL_CC		= $(CCACHE) $(CROSS_COMPILE)gcc
-=======
 LD		= $(CROSS_COMPILE)ld -O3 --strip-debug
-REAL_CC		= $(CROSS_COMPILE)gcc $(GCC_OPT)
->>>>>>> 51bc003... Optimize
+REAL_CC		= $(CROSS_COMPILE)$(CCACHE)gcc $(GCC_OPT)
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -683,7 +678,7 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os
 else
-KBUILD_CFLAGS	+= -Ofast
+KBUILD_CFLAGS	+= -O2
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
