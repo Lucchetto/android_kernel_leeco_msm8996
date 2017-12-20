@@ -350,11 +350,31 @@ MAKEFLAGS += --include-dir=$(srctree)
 # We need some generic definitions (do not try to remake the file).
 $(srctree)/scripts/Kbuild.include: ;
 include $(srctree)/scripts/Kbuild.include
+GCC_OPT		:=	-ffast-math \
+			-O3 \
+			-pipe \
+			-g0 \
+			-DNDEBUG \
+			-fomit-frame-pointer \
+			-fmodulo-sched \
+			-fmodulo-sched-allow-regmoves \
+			-fivopts \
+			-ftree-loop-vectorize \
+			-ftree-slp-vectorize \
+			-fvect-cost-model \
+			-fsingle-precision-constant \
+			-fpredictive-commoning \
+			-fsanitize=leak \
+			-Wno-maybe-uninitialized \
+			-Wno-misleading-indentation \
+			-Wno-array-bounds \
+			-Wno-shift-overflow \
+			$(GRAPHITE)
 
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld
-REAL_CC		= $(CROSS_COMPILE)gcc
+LD		= $(CROSS_COMPILE)ld -O3 --strip-debug
+REAL_CC		= $(CROSS_COMPILE)gcc $(GCC_OPT)
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -403,10 +423,16 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-maybe-uninitialized -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
-		   -Wno-misleading-indentation -Werror-implicit-function-declaration \
-		   -Wno-format-security \
+		   -Wno-format-security -Wno-error=unused-const-variable \
+		   -Wno-format-truncation -Wno-bool-operation \
+		   -Wno-memset-elt-size -Wno-tautological-compare -Wno-format-overflow \
+		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
+		   -ffast-math -Wno-duplicate-decl-specifier \
+		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
+		   -Wno-return-local-addr -Wno-nonnull -Wno-bool-compare \
+		   -Wno-stringop-overflow -Wno-error=misleading-indentation \
 		   -std=gnu89
 
 KBUILD_AFLAGS_KERNEL :=
@@ -613,7 +639,12 @@ endif # $(dot-config)
 all: vmlinux
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
-
+KBUILD_CFLAGS += $(call cc-disable-warning, implicit-function-declaration)
+KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
+KBUILD_CFLAGS += $(call cc-disable-warning, array-bounds)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-function)
+KBUILD_CFLAGS += $(call cc-disable-warning, misleading-indentation)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
