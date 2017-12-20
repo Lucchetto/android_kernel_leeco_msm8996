@@ -373,8 +373,8 @@ GCC_OPT		:=	-ffast-math \
 
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld -O3 --strip-debug
-REAL_CC		= $(CROSS_COMPILE)gcc $(GCC_OPT)
+LD		= $(CROSS_COMPILE)ld
+REAL_CC		= $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
@@ -428,8 +428,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-maybe-uninitialized -W
 		   -Wno-format-security -Wno-error=unused-const-variable \
 		   -Wno-format-truncation -Wno-bool-operation \
 		   -Wno-memset-elt-size -Wno-tautological-compare -Wno-format-overflow \
-		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
-		   -ffast-math -Wno-duplicate-decl-specifier \
+		   -Wno-duplicate-decl-specifier \
 		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
 		   -Wno-return-local-addr -Wno-nonnull -Wno-bool-compare \
 		   -Wno-stringop-overflow -Wno-error=misleading-indentation \
