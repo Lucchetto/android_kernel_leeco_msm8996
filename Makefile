@@ -435,7 +435,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-maybe-uninitialized -W
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -Wno-format-truncation -Wno-bool-operation \
-		   -Wno-memset-elt-size -Wno-format-overflow -fno-store-merging \
+		   -Wno-unused-result -Wno-memset-elt-size -Wno-format-overflow \
 		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -std=gnu89
 
