@@ -340,6 +340,17 @@ static void __kthread_bind_mask(struct task_struct *p, const struct cpumask *mas
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 }
 
+static void __kthread_bind(struct task_struct *p, unsigned int cpu, long state)
+{
+	/* Must have done schedule() in kthread() before we set_task_cpu */
+	if (!wait_task_inactive(p, state)) {
+		WARN_ON(1);
+		return;
+	}
+	/* It's safe because the task is inactive. */
+	do_set_cpus_allowed(p, cpumask_of(cpu));
+	p->flags |= PF_NO_SETAFFINITY;
+}
 
 /**
  * kthread_bind - bind a just-created kthread to a cpu.
@@ -350,11 +361,10 @@ static void __kthread_bind_mask(struct task_struct *p, const struct cpumask *mas
  * except that @cpu doesn't need to be online, and the thread must be
  * stopped (i.e., just returned from kthread_create()).
  */
-static void __kthread_bind(struct task_struct *p, unsigned int cpu, long state)
+void kthread_bind(struct task_struct *p, unsigned int cpu)
 {
-	__kthread_bind_mask(p, cpumask_of(cpu), state);
+	__kthread_bind_mask(p, cpu, TASK_UNINTERRUPTIBLE);
 }
-
 void kthread_bind_mask(struct task_struct *p, const struct cpumask *mask)
 {
 	__kthread_bind_mask(p, mask, TASK_UNINTERRUPTIBLE);
