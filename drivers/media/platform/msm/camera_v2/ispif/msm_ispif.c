@@ -1107,7 +1107,6 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	uint32_t vfe_mask = 0;
 	uint32_t intf_addr;
 
-
 	if (ispif->ispif_state != ISPIF_POWER_UP) {
 		pr_err("%s: ispif invalid state %d\n", __func__,
 			ispif->ispif_state);
@@ -1137,8 +1136,8 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	if (rc < 0)
 		return -EFAULT;
 
-	rc = msm_cam_clk_enable(&ispif->pdev->dev,
-		ispif_clk_info, ispif->clk,
+	rc = msm_camera_clk_enable(&ispif->pdev->dev,
+		ispif->clk_info, ispif->clks,
 		ispif->num_clk, 1);
 	if (rc < 0)
 		goto disable_regulator;
@@ -1172,8 +1171,8 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	}
 
 	pr_info("%s: ISPIF reset hw done, Restarting", __func__);
-	rc = msm_cam_clk_enable(&ispif->pdev->dev,
-		ispif_clk_info, ispif->clk,
+	rc = msm_camera_clk_enable(&ispif->pdev->dev,
+		ispif->clk_info, ispif->clks,
 		ispif->num_clk, 0);
 	if (rc < 0)
 		goto disable_regulator;
@@ -1229,8 +1228,8 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 	return rc;
 
 disable_clk:
-	msm_cam_clk_enable(&ispif->pdev->dev,
-		ispif_clk_info, ispif->clk,
+	msm_camera_clk_enable(&ispif->pdev->dev,
+		ispif->clk_info, ispif->clks,
 		ispif->num_clk, 0);
 disable_regulator:
 	/* Turn OFF regulators */

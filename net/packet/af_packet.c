@@ -1437,7 +1437,11 @@ static int fanout_add(struct sock *sk, u16 id, u16 type_flags)
 		return -EINVAL;
 	}
 
-mutex_lock(&fanout_mutex);
+	mutex_lock(&fanout_mutex);
+
+	err = -EINVAL;
+	if (!po->running)
+		goto out;
 
 	err = -EALREADY;
 	if (po->fanout)
@@ -3340,15 +3344,8 @@ packet_setsockopt(struct socket *sock, int level, int optname, char __user *optv
 			return -EFAULT;
 		if (val > INT_MAX)
 			return -EINVAL;
-		lock_sock(sk);
-		if (po->rx_ring.pg_vec || po->tx_ring.pg_vec) {
-			ret = -EBUSY;
-		} else {
-			po->tp_reserve = val;
-			ret = 0;
-		}
-		release_sock(sk);
-		return ret;
+		po->tp_reserve = val;
+		return 0;
 	}
 	case PACKET_LOSS:
 	{
