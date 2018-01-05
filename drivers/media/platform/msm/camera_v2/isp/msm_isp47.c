@@ -723,12 +723,6 @@ static void msm_vfe47_reg_update(struct vfe_device *vfe_dev,
 
 	if ((vfe_dev->is_split && vfe_dev->pdev->id == ISP_VFE1) &&
 		((frame_src == VFE_PIX_0) || (frame_src == VFE_SRC_MAX))) {
-		if (!vfe_dev->common_data->dual_vfe_res->vfe_base[ISP_VFE0]) {
-			pr_err("%s vfe_base for ISP_VFE0 is NULL\n", __func__);
-			spin_unlock_irqrestore(&vfe_dev->reg_update_lock,
-				flags);
-			return;
-		}
 		msm_camera_io_w_mb(update_mask,
 			vfe_dev->common_data->dual_vfe_res->
 			vfe_base[ISP_VFE0] + 0x4AC);
@@ -1609,44 +1603,33 @@ static void msm_vfe47_cfg_axi_ub_equal_default(
 	uint64_t delta;
 
 	for (i = 0; i < axi_data->hw_info->num_wm; i++) {
-		if (axi_data->free_wm[i]) {
+		if (axi_data->free_wm[i] > 0) {
 			num_used_wms++;
-			total_image_size +=
-				axi_data->wm_image_size[i];
+			total_image_size += axi_data->wm_image_size[i];
 		}
 	}
-	if (!total_image_size) {
-		pr_err("%s: Error total_image_size is 0\n", __func__);
-		return;
-	}
-	prop_size = vfe_dev->hw_info->vfe_ops.axi_ops.
-		get_ub_size(vfe_dev) -
+	if (vfe_dev->pdev->id == ISP_VFE0) {
+		prop_size = MSM_ISP47_TOTAL_IMAGE_UB_VFE0 -
 		axi_data->hw_info->min_wm_ub * num_used_wms;
+	} else if (vfe_dev->pdev->id == ISP_VFE1) {
+		prop_size = MSM_ISP47_TOTAL_IMAGE_UB_VFE1 -
+		axi_data->hw_info->min_wm_ub * num_used_wms;
+	} else {
+		pr_err("%s: incorrect VFE device\n", __func__);
+	}
 	for (i = 0; i < axi_data->hw_info->num_wm; i++) {
-		if (!axi_data->free_wm[i]) {
-			msm_camera_io_w(0,
-				vfe_dev->vfe_base +
-				vfe_dev->hw_info->vfe_ops.axi_ops.
-					ub_reg_offset(vfe_dev, i));
-		}
-		if (!axi_data->free_wm[i] || frame_src != SRC_TO_INTF(
-				HANDLE_TO_IDX(axi_data->free_wm[i])))
-			continue;
-
-		delta = (uint64_t)axi_data->wm_image_size[i] *
-			(uint64_t)prop_size;
+		if (axi_data->free_wm[i]) {
+			delta = (uint64_t)axi_data->wm_image_size[i] *
+					(uint64_t)prop_size;
 			do_div(delta, total_image_size);
-		if (frame_src != VFE_PIX_0) {
-			if (delta <= axi_data->hw_info->min_wm_ub)
-				delta = axi_data->hw_info->min_wm_ub;
-		}
-		wm_ub_size = axi_data->hw_info->min_wm_ub +
-			(uint32_t)delta;
-		msm_camera_io_w(ub_offset << 16 | (wm_ub_size - 1),
-			vfe_dev->vfe_base +
-			vfe_dev->hw_info->vfe_ops.axi_ops.
-				ub_reg_offset(vfe_dev, i));
-		ub_offset += wm_ub_size;
+			wm_ub_size = axi_data->hw_info->min_wm_ub +
+					(uint32_t)delta;
+			msm_camera_io_w(ub_offset << 16 | (wm_ub_size - 1),
+				vfe_dev->vfe_base + VFE47_WM_BASE(i) + 0x18);
+			ub_offset += wm_ub_size;
+		} else
+			msm_camera_io_w(0,
+				vfe_dev->vfe_base + VFE47_WM_BASE(i) + 0x18);
 	}
 }
 
@@ -2450,3 +2433,4 @@ module_init(msm_vfe47_init_module);
 module_exit(msm_vfe47_exit_module);
 MODULE_DESCRIPTION("MSM VFE47 driver");
 MODULE_LICENSE("GPL v2");
+
