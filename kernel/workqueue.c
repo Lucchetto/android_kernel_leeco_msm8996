@@ -4163,7 +4163,7 @@ struct workqueue_struct *__alloc_workqueue_key(const char *fmt,
 		}
 
 		wq->rescuer = rescuer;
-		rescuer->task->flags |= PF_NO_SETAFFINITY;
+	kthread_bind_mask(rescuer->task, cpu_possible_mask);
 		wake_up_process(rescuer->task);
 	}
 
