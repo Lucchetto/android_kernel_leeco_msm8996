@@ -26,7 +26,6 @@
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
 #include "mdss_livedisplay.h"
-#endif
 
 #ifdef CONFIG_POWERSUSPEND
 #include <linux/powersuspend.h>
