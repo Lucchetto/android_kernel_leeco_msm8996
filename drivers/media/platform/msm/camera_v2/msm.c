@@ -35,6 +35,10 @@
 
 static struct v4l2_device *msm_v4l2_dev;
 static struct list_head    ordered_sd_list;
+static struct mutex        ordered_sd_mtx;
+static struct mutex        v4l2_event_mtx;
+
+static struct pm_qos_request msm_v4l2_pm_qos_request;
 
 static struct msm_queue_head *msm_session_q;
 
@@ -671,6 +675,19 @@ static long msm_private_ioctl(struct file *file, void *fh,
 		return 0;
 	}
 
+	if (!event_data)
+		return -EINVAL;
+
+	switch (cmd) {
+	case MSM_CAM_V4L2_IOCTL_NOTIFY:
+	case MSM_CAM_V4L2_IOCTL_CMD_ACK:
+	case MSM_CAM_V4L2_IOCTL_NOTIFY_DEBUG:
+	case MSM_CAM_V4L2_IOCTL_NOTIFY_ERROR:
+		break;
+	default:
+		return -ENOTTY;
+	}
+
 	memset(&event, 0, sizeof(struct v4l2_event));
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -765,13 +782,25 @@ static long msm_private_ioctl(struct file *file, void *fh,
 static int msm_unsubscribe_event(struct v4l2_fh *fh,
 	const struct v4l2_event_subscription *sub)
 {
-	return v4l2_event_unsubscribe(fh, sub);
+	int rc;
+
+	mutex_lock(&v4l2_event_mtx);
+	rc = v4l2_event_unsubscribe(fh, sub);
+	mutex_unlock(&v4l2_event_mtx);
+
+	return rc;
 }
 
 static int msm_subscribe_event(struct v4l2_fh *fh,
 	const struct v4l2_event_subscription *sub)
 {
-	return v4l2_event_subscribe(fh, sub, 5, NULL);
+	int rc;
+
+	mutex_lock(&v4l2_event_mtx);
+	rc = v4l2_event_subscribe(fh, sub, 5, NULL);
+	mutex_unlock(&v4l2_event_mtx);
+
+	return rc;
 }
 
 static const struct v4l2_ioctl_ops g_msm_ioctl_ops = {
@@ -1283,6 +1312,8 @@ static int msm_probe(struct platform_device *pdev)
 	msm_init_queue(msm_session_q);
 	spin_lock_init(&msm_eventq_lock);
 	spin_lock_init(&msm_pid_lock);
+	mutex_init(&ordered_sd_mtx);
+	mutex_init(&v4l2_event_mtx);
 	INIT_LIST_HEAD(&ordered_sd_list);
 
 	cam_debugfs_root = debugfs_create_dir(MSM_CAM_LOGSYNC_FILE_BASEDIR,
