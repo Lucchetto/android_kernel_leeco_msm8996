@@ -34,6 +34,9 @@
 #include <linux/log2.h>
 #include <linux/cma.h>
 #include <linux/highmem.h>
+#include <linux/delay.h>
+#include <linux/kmemleak.h>
+#include <trace/events/cma.h>
 #include <linux/io.h>
 
 
