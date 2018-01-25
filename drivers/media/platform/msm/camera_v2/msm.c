@@ -32,13 +32,9 @@
 #include "cam_hw_ops.h"
 #include <media/msmb_generic_buf_mgr.h>
 
-
 static struct v4l2_device *msm_v4l2_dev;
 static struct list_head    ordered_sd_list;
-static struct mutex        ordered_sd_mtx;
 static struct mutex        v4l2_event_mtx;
-
-static struct pm_qos_request msm_v4l2_pm_qos_request;
 
 static struct msm_queue_head *msm_session_q;
 
@@ -152,7 +148,7 @@ typedef int (*msm_queue_find_func)(void *d1, void *d2);
 #define msm_queue_find(queue, type, member, func, data) ({\
 	unsigned long flags;					\
 	struct msm_queue_head *__q = (queue);			\
-	type *node = 0; \
+	type *node = NULL; \
 	typeof(node) __ret = NULL; \
 	msm_queue_find_func __f = (func); \
 	spin_lock_irqsave(&__q->lock, flags);			\
@@ -268,11 +264,11 @@ void msm_delete_stream(unsigned int session_id, unsigned int stream_id)
 
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
+
 	if (!session)
 		return;
 
 	while (1) {
-		unsigned long wl_flags;
 
 		if (try_count > 5) {
 			pr_err("%s : not able to delete stream %d\n",
@@ -280,20 +276,18 @@ void msm_delete_stream(unsigned int session_id, unsigned int stream_id)
 			break;
 		}
 
-		write_lock_irqsave(&session->stream_rwlock, wl_flags);
+		write_lock(&session->stream_rwlock);
 		try_count++;
 		stream = msm_queue_find(&session->stream_q, struct msm_stream,
 			list, __msm_queue_find_stream, &stream_id);
 
 		if (!stream) {
-			write_unlock_irqrestore(&session->stream_rwlock,
-				wl_flags);
+			write_unlock(&session->stream_rwlock);
 			return;
 		}
 
 		if (msm_vb2_get_stream_state(stream) != 1) {
-			write_unlock_irqrestore(&session->stream_rwlock,
-				wl_flags);
+			write_unlock(&session->stream_rwlock);
 			continue;
 		}
 
@@ -303,7 +297,7 @@ void msm_delete_stream(unsigned int session_id, unsigned int stream_id)
 		kfree(stream);
 		stream = NULL;
 		spin_unlock_irqrestore(&(session->stream_q.lock), flags);
-		write_unlock_irqrestore(&session->stream_rwlock, wl_flags);
+		write_unlock(&session->stream_rwlock);
 		break;
 	}
 
@@ -456,6 +450,7 @@ int msm_create_session(unsigned int session_id, struct video_device *vdev)
 	mutex_init(&session->lock);
 	mutex_init(&session->lock_q);
 	mutex_init(&session->close_lock);
+	rwlock_init(&session->stream_rwlock);
 	return 0;
 }
 EXPORT_SYMBOL(msm_create_session);
@@ -1044,16 +1039,11 @@ struct msm_session *msm_get_session(unsigned int session_id)
 }
 EXPORT_SYMBOL(msm_get_session);
 
-struct msm_stream *msm_get_stream(unsigned int session_id,
+
+struct msm_stream *msm_get_stream(struct msm_session *session,
 	unsigned int stream_id)
 {
-	struct msm_session *session;
 	struct msm_stream *stream;
-
-	session = msm_queue_find(msm_session_q, struct msm_session,
-		list, __msm_queue_find_session, &session_id);
-	if (!session)
-		return ERR_PTR(-EINVAL);
 
 	stream = msm_queue_find(&session->stream_q, struct msm_stream,
 		list, __msm_queue_find_stream, &stream_id);
@@ -1137,6 +1127,7 @@ struct msm_session *msm_get_session_from_vb2q(struct vb2_queue *q)
 	return NULL;
 }
 EXPORT_SYMBOL(msm_get_session_from_vb2q);
+
 
 #ifdef CONFIG_COMPAT
 long msm_copy_camera_private_ioctl_args(unsigned long arg,
@@ -1312,7 +1303,6 @@ static int msm_probe(struct platform_device *pdev)
 	msm_init_queue(msm_session_q);
 	spin_lock_init(&msm_eventq_lock);
 	spin_lock_init(&msm_pid_lock);
-	mutex_init(&ordered_sd_mtx);
 	mutex_init(&v4l2_event_mtx);
 	INIT_LIST_HEAD(&ordered_sd_list);
 
