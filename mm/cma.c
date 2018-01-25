@@ -39,7 +39,6 @@
 #include <trace/events/cma.h>
 #include <linux/io.h>
 
-
 #include "cma.h"
 
 struct cma cma_areas[MAX_CMA_AREAS];
