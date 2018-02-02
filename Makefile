@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 18
-SUBLEVEL = 92
+SUBLEVEL = 71
 EXTRAVERSION =
 NAME = Diseased Newt
 
@@ -350,26 +350,6 @@ MAKEFLAGS += --include-dir=$(srctree)
 # We need some generic definitions (do not try to remake the file).
 $(srctree)/scripts/Kbuild.include: ;
 include $(srctree)/scripts/Kbuild.include
-GCC_OPT		:=	-ffast-math \
-			-O3 \
-			-pipe \
-			-g0 \
-			-DNDEBUG \
-			-fomit-frame-pointer \
-			-fmodulo-sched \
-			-fmodulo-sched-allow-regmoves \
-			-fivopts \
-			-ftree-loop-vectorize \
-			-ftree-slp-vectorize \
-			-fvect-cost-model \
-			-fsingle-precision-constant \
-			-fpredictive-commoning \
-			-fsanitize=leak \
-			-Wno-maybe-uninitialized \
-			-Wno-misleading-indentation \
-			-Wno-array-bounds \
-			-Wno-shift-overflow \
-			$(GRAPHITE)
 
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
@@ -423,23 +403,13 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-maybe-uninitialized -Wno-trigraphs \
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
-		   -Wno-format-security -Wno-error=unused-const-variable \
-		   -Wno-format-truncation -Wno-bool-operation \
-		   -Wno-memset-elt-size -Wno-tautological-compare -Wno-format-overflow \
-		   -Wno-duplicate-decl-specifier \
-		   -Wno-discarded-array-qualifiers -Wno-incompatible-pointer-types \
-		   -Wno-return-local-addr -Wno-nonnull -Wno-bool-compare \
-		   -Wno-stringop-overflow -Wno-error=misleading-indentation \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -Wno-format-truncation -Wno-bool-operation \
-		   -Wno-unused-result -Wno-memset-elt-size -Wno-format-overflow \
-		   -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -std=gnu89
 
-BUILD_AFLAGS_KERNEL :=
+KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
 KBUILD_AFLAGS_MODULE  := -DMODULE
@@ -457,7 +427,7 @@ export MAKE AWK GENKSYMS INSTALLKERNEL PERL PYTHON UTS_MACHINE
 export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
 
 export KBUILD_CPPFLAGS NOSTDINC_FLAGS LINUXINCLUDE OBJCOPYFLAGS LDFLAGS
-export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE CFLAGS_GCOV CFLAGS_KASAN
+export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE CFLAGS_GCOV CFLAGS_KCOV CFLAGS_KASAN CFLAGS_UBSAN
 export KBUILD_AFLAGS AFLAGS_KERNEL AFLAGS_MODULE
 export KBUILD_AFLAGS_MODULE KBUILD_CFLAGS_MODULE KBUILD_LDFLAGS_MODULE
 export KBUILD_AFLAGS_KERNEL KBUILD_CFLAGS_KERNEL
@@ -643,26 +613,14 @@ endif # $(dot-config)
 all: vmlinux
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
-KBUILD_CFLAGS += $(call cc-disable-warning, implicit-function-declaration)
-KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
-KBUILD_CFLAGS += $(call cc-disable-warning, array-bounds)
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-function)
-KBUILD_CFLAGS += $(call cc-disable-warning, misleading-indentation)
+
 KBUILD_CFLAGS	+= $(call cc-option,-fno-delete-null-pointer-checks,)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,array-bounds,)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,unused-const-variable,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning,frame-address,)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-truncation)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, format-overflow)
 KBUILD_CFLAGS	+= $(call cc-disable-warning, int-in-bool-context)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-PIE)
 KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,array-bounds,)
-KBUILD_CFLAGS	+= $(call cc-disable-warning,unused-const-variable,)
-
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
@@ -704,25 +662,33 @@ endif
 # to let the build fail with bad compiler flags so that we can't produce a
 # kernel when there is a CONFIG and compiler mismatch.
 #
-#ifdef CONFIG_CC_STACKPROTECTOR_REGULAR
-#  stackp-flag := -fstack-protector
-#  ifeq ($(call cc-option, $(stackp-flag)),)
-#    $(warning Cannot use CONFIG_CC_STACKPROTECTOR_REGULAR: \
-#             -fstack-protector not supported by compiler)
-#  endif
-#else
-#ifdef CONFIG_CC_STACKPROTECTOR_STRONG
-#  stackp-flag := -fstack-protector-strong
-#  ifeq ($(call cc-option, $(stackp-flag)),)
-#    $(warning Cannot use CONFIG_CC_STACKPROTECTOR_STRONG: \
-#	      -fstack-protector-strong not supported by compiler)
-#  endif
-#else
+ifdef CONFIG_CC_STACKPROTECTOR_REGULAR
+  stackp-flag := -fstack-protector
+  ifeq ($(call cc-option, $(stackp-flag)),)
+    $(warning Cannot use CONFIG_CC_STACKPROTECTOR_REGULAR: \
+             -fstack-protector not supported by compiler)
+  endif
+else
+ifdef CONFIG_CC_STACKPROTECTOR_STRONG
+  stackp-flag := -fstack-protector-strong
+  ifeq ($(call cc-option, $(stackp-flag)),)
+    $(warning Cannot use CONFIG_CC_STACKPROTECTOR_STRONG: \
+	      -fstack-protector-strong not supported by compiler)
+  endif
+else
   # Force off for distro compilers that enable stack protector by default.
-#  stackp-flag := $(call cc-option, -fno-stack-protector)
-#endif
-#endif
+  stackp-flag := $(call cc-option, -fno-stack-protector)
+endif
+endif
 KBUILD_CFLAGS += $(stackp-flag)
+
+ifdef CONFIG_KCOV
+  ifeq ($(call cc-option, $(CFLAGS_KCOV)),)
+    $(warning Cannot use CONFIG_KCOV: \
+             -fsanitize-coverage=trace-pc is not supported by compiler)
+    CFLAGS_KCOV =
+  endif
+endif
 
 ifeq ($(COMPILER),clang)
 KBUILD_CPPFLAGS += $(call cc-option,-Qunused-arguments,)
@@ -808,9 +774,6 @@ KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
 
 # disable invalid "can't wrap" optimizations for signed / pointers
 KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
-
-# Make sure -fstack-check isn't enabled (like gentoo apparently did)
-KBUILD_CFLAGS  += $(call cc-option,-fno-stack-check,)
 
 # conserve stack if available
 KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
