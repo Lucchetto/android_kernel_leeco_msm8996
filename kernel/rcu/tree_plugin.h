@@ -33,6 +33,12 @@
 #define RCU_KTHREAD_PRIO 1
 
 #ifdef CONFIG_RCU_BOOST
+#define RCU_BOOST_PRIO CONFIG_RCU_BOOST_PRIO
+#else
+#define RCU_BOOST_PRIO RCU_KTHREAD_PRIO
+#endif
+
+#ifdef CONFIG_RCU_BOOST
 #include "../locking/rtmutex_common.h"
 
 /*
