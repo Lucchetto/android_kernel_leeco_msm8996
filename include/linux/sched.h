@@ -51,6 +51,7 @@ struct sched_param {
 #include <linux/resource.h>
 #include <linux/timer.h>
 #include <linux/hrtimer.h>
+#include <linux/kcov.h>
 #include <linux/task_io_accounting.h>
 #include <linux/latencytop.h>
 #include <linux/cred.h>
@@ -1363,8 +1364,8 @@ struct sched_rt_entity {
 	unsigned long timeout;
 	unsigned long watchdog_stamp;
 	unsigned int time_slice;
-	unsigned short on_rq;
-	unsigned short on_list;
+	bool schedtune_enqueued;
+	struct hrtimer schedtune_timer;
 
 	struct sched_rt_entity *back;
 #ifdef CONFIG_RT_GROUP_SCHED
@@ -1551,7 +1552,6 @@ struct task_struct {
 
 	unsigned long atomic_flags; /* Flags needing atomic access. */
 
-	struct restart_block restart_block;
 	pid_t pid;
 	pid_t tgid;
 
@@ -1592,6 +1592,8 @@ struct task_struct {
 
 	cputime_t utime, stime, utimescaled, stimescaled;
 	cputime_t gtime;
+	atomic64_t *time_in_state;
+	unsigned int max_states;
 	unsigned long long cpu_power;
 #ifndef CONFIG_VIRT_CPU_ACCOUNTING_NATIVE
 	struct cputime prev_cputime;
@@ -1889,7 +1891,6 @@ struct task_struct {
 	/* kcov desciptor wired with this task or NULL. */
 	struct kcov	*kcov;
 #endif
-
 #ifdef CONFIG_MEMCG /* memcg uses this to do batch job */
 	unsigned int memcg_kmem_skip_account;
 	struct memcg_oom_info {
@@ -3239,6 +3240,7 @@ static inline void inc_syscw(struct task_struct *tsk)
 {
 	tsk->ioac.syscw++;
 }
+
 static inline void inc_syscfs(struct task_struct *tsk)
 {
 	tsk->ioac.syscfs++;
@@ -3300,6 +3302,7 @@ static inline unsigned long rlimit_max(unsigned int limit)
 
 struct cpu_cycle_counter_cb {
 	u64 (*get_cpu_cycle_counter)(int cpu);
+	u32 (*get_cpu_cycles_max_per_us)(int cpu);
 };
 int register_cpu_cycle_counter_cb(struct cpu_cycle_counter_cb *cb);
 
