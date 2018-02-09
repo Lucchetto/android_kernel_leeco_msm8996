@@ -1364,6 +1364,8 @@ struct sched_rt_entity {
 	unsigned long timeout;
 	unsigned long watchdog_stamp;
 	unsigned int time_slice;
+	unsigned short on_rq;
+	unsigned short on_list;
 	bool schedtune_enqueued;
 	struct hrtimer schedtune_timer;
 
@@ -1551,7 +1553,7 @@ struct task_struct {
 	unsigned sched_contributes_to_load:1;
 
 	unsigned long atomic_flags; /* Flags needing atomic access. */
-
+	struct restart_block restart_block;
 	pid_t pid;
 	pid_t tgid;
 
