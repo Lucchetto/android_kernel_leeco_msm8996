@@ -11,6 +11,7 @@
 #include <linux/hrtimer.h>
 
 #include "walt.h"
+#include "tune.h"
 
 int sched_rr_timeslice = RR_TIMESLICE;
 
@@ -431,7 +432,7 @@ static void dequeue_top_rt_rq(struct rt_rq *rt_rq);
 
 static inline int on_rt_rq(struct sched_rt_entity *rt_se)
 {
-	return rt_se->on_rq;
+	return !list_empty(&rt_se->run_list);
 }
 
 #ifdef CONFIG_RT_GROUP_SCHED
@@ -477,8 +478,8 @@ static inline struct rt_rq *group_rt_rq(struct sched_rt_entity *rt_se)
 	return rt_se->my_q;
 }
 
-static void enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags);
-static void dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags);
+static void enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head);
+static void dequeue_rt_entity(struct sched_rt_entity *rt_se);
 
 static void sched_rt_rq_enqueue(struct rt_rq *rt_rq)
 {
@@ -494,7 +495,7 @@ static void sched_rt_rq_enqueue(struct rt_rq *rt_rq)
 		if (!rt_se)
 			enqueue_top_rt_rq(rt_rq);
 		else if (!on_rt_rq(rt_se))
-			enqueue_rt_entity(rt_se, 0);
+			enqueue_rt_entity(rt_se, false);
 
 		if (rt_rq->highest_prio.curr < curr->prio)
 			resched_curr(rq);
@@ -511,7 +512,7 @@ static void sched_rt_rq_dequeue(struct rt_rq *rt_rq)
 	if (!rt_se)
 		dequeue_top_rt_rq(rt_rq);
 	else if (on_rt_rq(rt_se))
-		dequeue_rt_entity(rt_se, 0);
+		dequeue_rt_entity(rt_se);
 }
 
 static inline int rt_rq_throttled(struct rt_rq *rt_rq)
@@ -1289,30 +1290,7 @@ void dec_rt_tasks(struct sched_rt_entity *rt_se, struct rt_rq *rt_rq)
 	dec_rt_group(rt_se, rt_rq);
 }
 
-/*
- * Change rt_se->run_list location unless SAVE && !MOVE
- *
- * assumes ENQUEUE/DEQUEUE flags match
- */
-static inline bool move_entity(unsigned int flags)
-{
-	if ((flags & (DEQUEUE_SAVE | DEQUEUE_MOVE)) == DEQUEUE_SAVE)
-		return false;
-
-	return true;
-}
-
-static void __delist_rt_entity(struct sched_rt_entity *rt_se, struct rt_prio_array *array)
-{
-	list_del_init(&rt_se->run_list);
-
-	if (list_empty(array->queue + rt_se_prio(rt_se)))
-		__clear_bit(rt_se_prio(rt_se), array->bitmap);
-
-	rt_se->on_list = 0;
-}
-
-static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head)
 {
 	struct rt_rq *rt_rq = rt_rq_of_se(rt_se);
 	struct rt_prio_array *array = &rt_rq->active;
@@ -1325,37 +1303,26 @@ static void __enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flag
 	 * get throttled and the current group doesn't have any other
 	 * active members.
 	 */
-	if (group_rq && (rt_rq_throttled(group_rq) || !group_rq->rt_nr_running)) {
-		if (rt_se->on_list)
-			__delist_rt_entity(rt_se, array);
+	if (group_rq && (rt_rq_throttled(group_rq) || !group_rq->rt_nr_running))
 		return;
-	}
 
-	if (move_entity(flags)) {
-		WARN_ON_ONCE(rt_se->on_list);
-		if (flags & ENQUEUE_HEAD)
-			list_add(&rt_se->run_list, queue);
-		else
-			list_add_tail(&rt_se->run_list, queue);
-
-		__set_bit(rt_se_prio(rt_se), array->bitmap);
-		rt_se->on_list = 1;
-	}
-	rt_se->on_rq = 1;
+	if (head)
+		list_add(&rt_se->run_list, queue);
+	else
+		list_add_tail(&rt_se->run_list, queue);
+	__set_bit(rt_se_prio(rt_se), array->bitmap);
 
 	inc_rt_tasks(rt_se, rt_rq);
 }
 
-static void __dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+static void __dequeue_rt_entity(struct sched_rt_entity *rt_se)
 {
 	struct rt_rq *rt_rq = rt_rq_of_se(rt_se);
 	struct rt_prio_array *array = &rt_rq->active;
 
-	if (move_entity(flags)) {
-		WARN_ON_ONCE(!rt_se->on_list);
-		__delist_rt_entity(rt_se, array);
-	}
-	rt_se->on_rq = 0;
+	list_del_init(&rt_se->run_list);
+	if (list_empty(array->queue + rt_se_prio(rt_se)))
+		__clear_bit(rt_se_prio(rt_se), array->bitmap);
 
 	dec_rt_tasks(rt_se, rt_rq);
 }
@@ -1364,7 +1331,7 @@ static void __dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flag
  * Because the prio of an upper entry depends on the lower
  * entries, we must remove entries top - down.
  */
-static void dequeue_rt_stack(struct sched_rt_entity *rt_se, unsigned int flags)
+static void dequeue_rt_stack(struct sched_rt_entity *rt_se)
 {
 	struct sched_rt_entity *back = NULL;
 
@@ -1377,31 +1344,31 @@ static void dequeue_rt_stack(struct sched_rt_entity *rt_se, unsigned int flags)
 
 	for (rt_se = back; rt_se; rt_se = rt_se->back) {
 		if (on_rt_rq(rt_se))
-			__dequeue_rt_entity(rt_se, flags);
+			__dequeue_rt_entity(rt_se);
 	}
 }
 
-static void enqueue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+static void enqueue_rt_entity(struct sched_rt_entity *rt_se, bool head)
 {
 	struct rq *rq = rq_of_rt_se(rt_se);
 
-	dequeue_rt_stack(rt_se, flags);
+	dequeue_rt_stack(rt_se);
 	for_each_sched_rt_entity(rt_se)
-		__enqueue_rt_entity(rt_se, flags);
+		__enqueue_rt_entity(rt_se, head);
 	enqueue_top_rt_rq(&rq->rt);
 }
 
-static void dequeue_rt_entity(struct sched_rt_entity *rt_se, unsigned int flags)
+static void dequeue_rt_entity(struct sched_rt_entity *rt_se)
 {
 	struct rq *rq = rq_of_rt_se(rt_se);
 
-	dequeue_rt_stack(rt_se, flags);
+	dequeue_rt_stack(rt_se);
 
 	for_each_sched_rt_entity(rt_se) {
 		struct rt_rq *rt_rq = group_rt_rq(rt_se);
 
 		if (rt_rq && rt_rq->rt_nr_running)
-			__enqueue_rt_entity(rt_se, flags);
+			__enqueue_rt_entity(rt_se, false);
 	}
 	enqueue_top_rt_rq(&rq->rt);
 }
@@ -1457,7 +1424,7 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_rt_entity *rt_se = &p->rt;
 
 	update_curr_rt(rq);
-	dequeue_rt_entity(rt_se, flags);
+	dequeue_rt_entity(rt_se);
 	walt_dec_cumulative_runnable_avg(rq, p);
 
 	dequeue_pushable_task(rq, p);
@@ -1574,7 +1541,6 @@ static void schedtune_dequeue_rt(struct rq *rq, struct task_struct *p)
 	schedtune_dequeue_task(p, task_cpu(p));
 	sched_rt_update_capacity_req(rq);
 	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
->>>>>>> 00d7ee9... sched/eas: Squash revert of some eas commits from AOSP
 }
 
 static int
@@ -1644,6 +1610,19 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	rcu_read_unlock();
 
 out:
+	/*
+	 * If previous CPU was different, make sure to cancel any active
+	 * schedtune timers and deboost.
+	 */
+	if (task_cpu(p) != cpu) {
+		unsigned long fl;
+		struct rq *prq = task_rq(p);
+
+		raw_spin_lock_irqsave(&prq->lock, fl);
+		schedtune_dequeue_rt(prq, p);
+		raw_spin_unlock_irqrestore(&prq->lock, fl);
+	}
+
 	return cpu;
 }
 
@@ -2404,6 +2383,13 @@ static void rq_offline_rt(struct rq *rq)
  */
 static void switched_from_rt(struct rq *rq, struct task_struct *p)
 {
+	/*
+	 * On class switch from rt, always cancel active schedtune timers,
+	 * this handles the cases where we switch class for a task that is
+	 * already rt-dequeued but has a running timer.
+	 */
+	schedtune_dequeue_rt(rq, p);
+
 	/*
 	 * If there are other RT tasks then we will reschedule
 	 * and the scheduling of the other RT tasks will handle

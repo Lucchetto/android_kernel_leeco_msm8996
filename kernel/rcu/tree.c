@@ -123,6 +123,8 @@ int rcu_num_lvls __read_mostly = RCU_NUM_LVLS;
 /* Number of rcu_nodes at specified level. */
 static int num_rcu_lvl[] = NUM_RCU_LVL_INIT;
 int rcu_num_nodes __read_mostly = NUM_RCU_NODES; /* Total # rcu_nodes in use. */
+/* panic() on RCU Stall sysctl. */
+int sysctl_panic_on_rcu_stall __read_mostly;
 
 /*
  * The rcu_scheduler_active variable transitions from zero to one just
@@ -1262,6 +1264,12 @@ static void rcu_dump_cpu_stacks(struct rcu_state *rsp)
 	}
 }
 
+static inline void panic_on_rcu_stall(void)
+{
+	if (sysctl_panic_on_rcu_stall)
+		panic("RCU Stall\n");
+}
+
 static void print_other_cpu_stall(struct rcu_state *rsp, unsigned long gpnum)
 {
 	int cpu;
@@ -1292,6 +1300,10 @@ static void print_other_cpu_stall(struct rcu_state *rsp, unsigned long gpnum)
 	 */
 	pr_err("INFO: %s detected stalls on CPUs/tasks:",
 	       rsp->name);
+#if defined(CONFIG_TRACING) && defined(DEBUG)
+	trace_printk("INFO: %s detected stalls on other CPUs\n",
+	       rsp->name);
+#endif
 	print_cpu_stall_info_begin();
 	rcu_for_each_leaf_node(rsp, rnp) {
 		raw_spin_lock_irqsave(&rnp->lock, flags);
@@ -1333,6 +1345,8 @@ static void print_other_cpu_stall(struct rcu_state *rsp, unsigned long gpnum)
 
 	/* Complain about tasks blocking the grace period. */
 
+	trigger_allbutself_cpu_backtrace();
+
 	rcu_print_detail_task_stall(rsp);
 
 	panic_on_rcu_stall();
@@ -1355,6 +1369,10 @@ static void print_cpu_stall(struct rcu_state *rsp)
 	 * RCU CPU stall warnings.
 	 */
 	pr_err("INFO: %s self-detected stall on CPU", rsp->name);
+#if defined(CONFIG_TRACING) && defined(DEBUG)
+	trace_printk("INFO: %s self-detected stall on CPU\n",
+	       rsp->name);
+#endif
 	print_cpu_stall_info_begin();
 	print_cpu_stall_info(rsp, smp_processor_id());
 	print_cpu_stall_info_end();
@@ -1373,6 +1391,8 @@ static void print_cpu_stall(struct rcu_state *rsp)
 		WRITE_ONCE(rsp->jiffies_stall,
 			   jiffies + 3 * rcu_jiffies_till_stall_check() + 3);
 	raw_spin_unlock_irqrestore(&rnp->lock, flags);
+
+	panic_on_rcu_stall();
 
 	/*
 	 * Attempt to revive the RCU machinery by forcing a context switch.
@@ -4362,13 +4382,26 @@ static int rcu_pm_notify(struct notifier_block *self,
 static int __init rcu_spawn_gp_kthread(void)
 {
 	unsigned long flags;
+	int kthread_prio_in = kthread_prio;
 	struct rcu_node *rnp;
 	struct rcu_state *rsp;
+	struct sched_param sp;
 	struct task_struct *t;
+
+	/* Force priority into range. */
+	if (IS_ENABLED(CONFIG_RCU_BOOST) && kthread_prio < 1)
+		kthread_prio = 1;
+	else if (kthread_prio < 0)
+		kthread_prio = 0;
+	else if (kthread_prio > 99)
+		kthread_prio = 99;
+	if (kthread_prio != kthread_prio_in)
+		pr_alert("rcu_spawn_gp_kthread(): Limited prio to %d from %d\n",
+			 kthread_prio, kthread_prio_in);
 
 	rcu_scheduler_fully_active = 1;
 	for_each_rcu_flavor(rsp) {
-		t = kthread_run(rcu_gp_kthread, rsp, "%s", rsp->name);
+		t = kthread_create(rcu_gp_kthread, rsp, "%s", rsp->name);
 		BUG_ON(IS_ERR(t));
 		rnp = rcu_get_root(rsp);
 		raw_spin_lock_irqsave(&rnp->lock, flags);

@@ -425,10 +425,10 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -Wno-unused-value \
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -Wno-unused-value -Wno-int-conversion -Wno-deprecated-declarations -Wno-return-local-addr \
 		   -fno-strict-aliasing -fno-common \
-		   -Wno-implicit-function-declaration \
-		   -Wno-format-security -Wno-error=maybe-uninitialized\
+		   -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-misleading-indentation \
+		   -Wno-format-security -Wno-error=maybe-uninitialized -Wno-tautological-compare -Wno-unused-variable -Wno-bool-compare \
                    -Wno-maybe-uninitialized -Wno-unused-function -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -std=gnu89
 
