@@ -198,6 +198,4 @@ source "drivers/bif/Kconfig"
 
 source "drivers/letv/Kconfig"
 
-source "drivers/android/Kconfig"
-
 endmenu
