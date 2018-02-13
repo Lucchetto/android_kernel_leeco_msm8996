@@ -375,7 +375,7 @@ GCC_OPT		:=	-ffast-math \
 
 # Make variables (CC, etc...)
 AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)ld.gold -O3 --strip-debug
+LD		= $(CROSS_COMPILE)ld -O3 --strip-debug
 REAL_CC		= $(CROSS_COMPILE)gcc $(GCC_OPT)
 CPP		= $(CC) -E
 AR		= $(CROSS_COMPILE)ar
@@ -425,8 +425,8 @@ LINUXINCLUDE    := \
 
 KBUILD_CPPFLAGS := -D__KERNEL__
 
-KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-int-conversion \
-		   -fno-strict-aliasing -fno-common -Wno-misleading-indentation -Wno-return-local-addr -Wno-bool-compare -Wno-tautological-compare \
+KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast \
+		   -fno-strict-aliasing -fno-common -Wno-return-local-addr \
 		   -Wno-error=implicit-function-declaration -Wno-return-local-addr -Wno-return-type \
 		   -Wno-format-security -Wno-error=maybe-uninitialized -Wno-implicit-function-declaration \
                    -Wno-maybe-uninitialized -Wno-unused-function -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \

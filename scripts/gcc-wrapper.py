@@ -41,6 +41,8 @@ import subprocess
 
 allowed_warnings = set([
     "arm-memlat-mon.c:196",
+    "arm-memlat-mon.c:203",
+    "arm-memlat-mon.c:210",
     "fdt.c:932",
     "hid-magicmouse.c:579",
     "sysrq.c:956",
