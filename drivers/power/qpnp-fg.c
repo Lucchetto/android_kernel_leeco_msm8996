@@ -238,9 +238,9 @@ enum fg_mem_data_index {
 static struct fg_mem_setting settings[FG_MEM_SETTING_MAX] = {
 	/*       ID                    Address, Offset, Value*/
 	SETTING(SOFT_COLD,       0x454,   0,      100),
-	SETTING(SOFT_HOT,        0x454,   1,      450),
+	SETTING(SOFT_HOT,        0x454,   1,      400),
 	SETTING(HARD_COLD,       0x454,   2,      50),
-	SETTING(HARD_HOT,        0x454,   3,      550),
+	SETTING(HARD_HOT,        0x454,   3,      450),
 	SETTING(RESUME_SOC,      0x45C,   1,      0),
 	SETTING(BCL_LM_THRESHOLD, 0x47C,   2,      50),
 	SETTING(BCL_MH_THRESHOLD, 0x47C,   3,      752),
@@ -330,7 +330,7 @@ module_param_named(
 	battery_type, fg_batt_type, charp, S_IRUSR | S_IWUSR
 );
 
-static int fg_sram_update_period_ms = 10000;
+static int fg_sram_update_period_ms = 30000;
 module_param_named(
 	sram_update_period_ms, fg_sram_update_period_ms, int, S_IRUSR | S_IWUSR
 );
@@ -485,7 +485,6 @@ struct fg_chip {
 	struct fg_irq		mem_irq[FG_MEM_IF_IRQ_COUNT];
 	struct completion	sram_access_granted;
 	struct completion	sram_access_revoked;
-	struct completion	fg_sram_updating_done;
 	struct completion	batt_id_avail;
 	struct completion	first_soc_done;
 	struct power_supply	bms_psy;
@@ -1234,9 +1233,6 @@ out:
 #define MEM_INTF_IMA_EXP_STS		0x55
 #define MEM_INTF_IMA_HW_STS		0x56
 #define MEM_INTF_IMA_BYTE_EN		0x60
-#define IMA_ADDR_STBL_ERR		BIT(7)
-#define IMA_WR_ACS_ERR			BIT(6)
-#define IMA_RD_ACS_ERR			BIT(5)
 #define IMA_IACS_CLR			BIT(2)
 #define IMA_IACS_RDY			BIT(1)
 static int fg_run_iacs_clear_sequence(struct fg_chip *chip)
@@ -2024,21 +2020,15 @@ static void fg_handle_battery_insertion(struct fg_chip *chip)
 {
 	reinit_completion(&chip->batt_id_avail);
 	reinit_completion(&chip->fg_reset_done);
-	queue_delayed_work(system_power_efficient_wq,
-		&chip->batt_profile_init, 0);
+	schedule_delayed_work(&chip->batt_profile_init, 0);
 	cancel_delayed_work(&chip->update_sram_data);
-	queue_delayed_work(system_power_efficient_wq,
-		&chip->update_sram_data, msecs_to_jiffies(0));
+	schedule_delayed_work(&chip->update_sram_data, msecs_to_jiffies(0));
 }
 
 
 static int soc_to_setpoint(int soc)
 {
-	/* this function will expand delta soc
-	 * return DIV_ROUND_CLOSEST(soc * 255, 100);
-	 * return original delta soc
-	 */
-	return soc;
+	return DIV_ROUND_CLOSEST(soc * 255, 100);
 }
 
 static void batt_to_setpoint_adc(int vbatt_mv, u8 *data)
@@ -2248,7 +2238,7 @@ static int get_monotonic_soc_raw(struct fg_chip *chip)
 }
 
 #define EMPTY_CAPACITY		0
-#define DEFAULT_CAPACITY	-1	/* reported when profile load is not be finished. */
+#define DEFAULT_CAPACITY	50
 #define MISSING_CAPACITY	100
 #define FULL_CAPACITY		100
 #define FULL_SOC_RAW		0xFF
@@ -2371,7 +2361,7 @@ static int set_prop_jeita_temp(struct fg_chip *chip,
 
 	cancel_delayed_work_sync(
 		&chip->update_jeita_setting);
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->update_jeita_setting, 0);
 
 	return rc;
@@ -2774,31 +2764,11 @@ try_again:
 		chip->last_beat_count = beat_count;
 	}
 resched:
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->check_sanity_work,
 		msecs_to_jiffies(SANITY_CHECK_PERIOD_MS));
 out:
 	fg_relax(&chip->sanity_wakeup_source);
-}
-
-/*
-  *function for read real-time vbat and ibat from register
-  */
-static int get_real_time_prop_value(struct fg_chip *chip, unsigned int type)
-{
-	int ret = -1;
-
-	cancel_delayed_work(&chip->update_sram_data);
-	reinit_completion(&chip->fg_sram_updating_done);
-	schedule_delayed_work(&chip->update_sram_data,
-		msecs_to_jiffies(0));
-
-	/*make sure we got the latest updated data. and make sure never hold the process too long.*/
-	ret = wait_for_completion_timeout(//never interruptable
-		&chip->fg_sram_updating_done,
-		msecs_to_jiffies(10));
-
-	return fg_data[type].value;
 }
 
 #define SRAM_TIMEOUT_MS			3000
@@ -2831,10 +2801,9 @@ wait:
 	}
 	rc = update_sram_data(chip, &resched_ms);
 
-	complete(&chip->fg_sram_updating_done); // inform the real time handler, data updating got done.
 out:
 	if (!rc)
-		queue_delayed_work(system_power_efficient_wq,
+		schedule_delayed_work(
 			&chip->update_sram_data,
 			msecs_to_jiffies(resched_ms));
 }
@@ -2953,7 +2922,7 @@ out:
 	fg_relax(&chip->update_temp_wakeup_source);
 
 resched:
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->update_temp_work,
 		msecs_to_jiffies(TEMP_PERIOD_UPDATE_MS));
 }
@@ -3593,13 +3562,11 @@ fail:
 
 #define CC_SOC_BASE_REG		0x5BC
 #define CC_SOC_OFFSET		3
-#define CC_SOC_MAGNITUDE_MASK	0x1FFFFFFF
-#define CC_SOC_NEGATIVE_BIT	BIT(29)
 static int fg_get_cc_soc(struct fg_chip *chip, int *cc_soc)
 {
 	int rc;
 	u8 reg[4];
-	unsigned int temp, magnitude;
+	int temp;
 
 	rc = fg_mem_read(chip, reg, CC_SOC_BASE_REG, 4, CC_SOC_OFFSET, 0);
 	if (rc) {
@@ -3608,11 +3575,7 @@ static int fg_get_cc_soc(struct fg_chip *chip, int *cc_soc)
 	}
 
 	temp = reg[3] << 24 | reg[2] << 16 | reg[1] << 8 | reg[0];
-       magnitude = temp & CC_SOC_MAGNITUDE_MASK;
-       if (temp & CC_SOC_NEGATIVE_BIT)
-               *cc_soc = -1 * (~magnitude + 1);
-       else
-               *cc_soc = magnitude;
+	*cc_soc = sign_extend32(temp, 29);
 	return 0;
 }
 
@@ -4214,8 +4177,7 @@ static void status_change_work(struct work_struct *work)
 		 */
 		if (chip->last_temp_update_time && chip->soc_slope_limiter_en) {
 			cancel_delayed_work_sync(&chip->update_temp_work);
-			queue_delayed_work(system_power_efficient_wq,
-				&chip->update_temp_work,
+			schedule_delayed_work(&chip->update_temp_work,
 				msecs_to_jiffies(0));
 		}
 
@@ -4231,8 +4193,7 @@ static void status_change_work(struct work_struct *work)
 		 */
 		if (chip->last_sram_update_time + 5 < current_time) {
 			cancel_delayed_work(&chip->update_sram_data);
-			queue_delayed_work(system_power_efficient_wq,
-				&chip->update_sram_data,
+			schedule_delayed_work(&chip->update_sram_data,
 				msecs_to_jiffies(0));
 		}
 
@@ -4701,10 +4662,10 @@ static int fg_power_get_property(struct power_supply *psy,
 		val->intval = get_sram_prop_now(chip, FG_DATA_VINT_ERR);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-		val->intval = get_real_time_prop_value(chip, FG_DATA_CURRENT);
+		val->intval = get_sram_prop_now(chip, FG_DATA_CURRENT);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		val->intval = get_real_time_prop_value(chip, FG_DATA_VOLTAGE);
+		val->intval = get_sram_prop_now(chip, FG_DATA_VOLTAGE);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
 		val->intval = get_sram_prop_now(chip, FG_DATA_OCV);
@@ -5364,8 +5325,7 @@ static irqreturn_t fg_vbatt_low_handler(int irq, void *_chip)
 			disable_irq_nosync(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = false;
 			fg_stay_awake(&chip->empty_check_wakeup_source);
-			queue_delayed_work(system_power_efficient_wq,
-				&chip->check_empty_work,
+			schedule_delayed_work(&chip->check_empty_work,
 				msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
 		} else {
 			if (fg_debug_mask & FG_IRQS)
@@ -5501,8 +5461,7 @@ static irqreturn_t fg_soc_irq_handler(int irq, void *_chip)
 		msoc = get_monotonic_soc_raw(chip);
 		if (msoc == 0 || chip->soc_empty) {
 			fg_stay_awake(&chip->empty_check_wakeup_source);
-			queue_delayed_work(system_power_efficient_wq,
-				&chip->check_empty_work,
+			schedule_delayed_work(&chip->check_empty_work,
 				msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
 		}
 	}
@@ -5562,8 +5521,7 @@ static irqreturn_t fg_empty_soc_irq_handler(int irq, void *_chip)
 		pr_info("triggered 0x%x\n", soc_rt_sts);
 	if (fg_is_batt_empty(chip)) {
 		fg_stay_awake(&chip->empty_check_wakeup_source);
-		queue_delayed_work(system_power_efficient_wq,
-			&chip->check_empty_work,
+		schedule_delayed_work(&chip->check_empty_work,
 			msecs_to_jiffies(FG_EMPTY_DEBOUNCE_MS));
 	} else {
 		chip->soc_empty = false;
@@ -6199,8 +6157,7 @@ try_again:
 
 			if (!tried_once) {
 				cancel_delayed_work(&chip->update_sram_data);
-				queue_delayed_work(system_power_efficient_wq,
-					&chip->update_sram_data,
+				schedule_delayed_work(&chip->update_sram_data,
 					msecs_to_jiffies(0));
 				msleep(1000);
 				tried_once = true;
@@ -6722,11 +6679,11 @@ no_profile:
 	return rc;
 update:
 	cancel_delayed_work(&chip->update_sram_data);
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->update_sram_data,
 		msecs_to_jiffies(0));
 reschedule:
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->batt_profile_init,
 		msecs_to_jiffies(BATTERY_PSY_WAIT_MS));
 	fg_relax(&chip->profile_wakeup_source);
@@ -7970,77 +7927,6 @@ static const struct file_operations fg_memif_dfs_reg_fops = {
 	.write		= fg_memif_dfs_reg_write,
 };
 
-#define ADDR_OF_FG_REGS_START	0x400
-#define COUNT_OF_ALL_FG_REGS	0x200
-static int fg_regs_open(struct inode *inode, struct file *file)
-{
-	struct fg_log_buffer *log;
-	struct fg_trans *trans;
-	u8 *data_buf;
-
-	size_t logbufsize = SZ_4K;
-	size_t databufsize = SZ_4K;
-
-	if (!dbgfs_data.chip) {
-		pr_err("Not initialized data\n");
-		return -EINVAL;
-	}
-
-	/* Per file "transaction" data */
-	trans = kzalloc(sizeof(*trans), GFP_KERNEL);
-	if (!trans) {
-		pr_err("Unable to allocate memory for transaction data\n");
-		return -ENOMEM;
-	}
-
-	/* Allocate log buffer */
-	log = kzalloc(logbufsize, GFP_KERNEL);
-
-	if (!log) {
-		kfree(trans);
-		pr_err("Unable to allocate memory for log buffer\n");
-		return -ENOMEM;
-	}
-
-	log->rpos = 0;
-	log->wpos = 0;
-	log->len = logbufsize - sizeof(*log);
-
-	/* Allocate data buffer */
-	data_buf = kzalloc(databufsize, GFP_KERNEL);
-
-	if (!data_buf) {
-		kfree(trans);
-		kfree(log);
-		pr_err("Unable to allocate memory for data buffer\n");
-		return -ENOMEM;
-	}
-
-	trans->log		= log;
-	trans->data		= data_buf;
-	trans->cnt		= COUNT_OF_ALL_FG_REGS;
-	trans->addr		= ADDR_OF_FG_REGS_START;
-	trans->chip		= dbgfs_data.chip;
-	trans->offset	= trans->addr;
-
-	file->private_data = trans;
-	return 0;
-}
-
-static ssize_t fg_regs_write(struct file *file, const char __user *buf,
-			size_t count, loff_t *ppos)
-{
-	/* To be Done */
-	return 0;
-}
-
-static const struct file_operations fg_regs_sys_ops = {
-	.open		= fg_regs_open,
-	.release	= fg_memif_dfs_close,
-	.read		= fg_memif_dfs_reg_read,
-	.write		= fg_regs_write,
-};
-
 /**
  * fg_dfs_create_fs: create debugfs file system.
  * @return pointer to root directory or NULL if failed to create fs
@@ -8127,14 +8013,6 @@ int fg_dfs_create(struct fg_chip *chip)
 							&fg_memif_dfs_reg_fops);
 	if (!file) {
 		pr_err("error creating 'data' entry\n");
-		goto err_remove_fs;
-	}
-
-	/* create interface for dump all fg_regs. */
-	file = debugfs_create_file("fg_regs", S_IRUGO | S_IWUSR, root, chip,
-							&fg_regs_sys_ops);
-	if (!file) {
-		pr_err("error creating 'fg_regs' entry\n");
 		goto err_remove_fs;
 	}
 
@@ -8710,8 +8588,7 @@ out:
 	fg_enable_irqs(chip, true);
 	update_sram_data_work(&chip->update_sram_data.work);
 	update_temp_data(&chip->update_temp_work.work);
-	queue_delayed_work(system_power_efficient_wq,
-		&chip->check_sanity_work,
+	schedule_delayed_work(&chip->check_sanity_work,
 		msecs_to_jiffies(1000));
 	chip->ima_error_handling = false;
 	mutex_unlock(&chip->ima_recovery_lock);
@@ -8847,7 +8724,7 @@ static void delayed_init_work(struct work_struct *work)
 	/* release memory access before update_sram_data is called */
 	fg_mem_release(chip);
 
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->update_jeita_setting,
 		msecs_to_jiffies(INIT_JEITA_DELAY_MS));
 
@@ -8858,12 +8735,10 @@ static void delayed_init_work(struct work_struct *work)
 		update_temp_data(&chip->update_temp_work.work);
 
 	if (!chip->use_otp_profile)
-		queue_delayed_work(system_power_efficient_wq,
-			&chip->batt_profile_init, 0);
+		schedule_delayed_work(&chip->batt_profile_init, 0);
 
 	if (chip->ima_supported && fg_reset_on_lockup)
-		queue_delayed_work(system_power_efficient_wq,
-			&chip->check_sanity_work,
+		schedule_delayed_work(&chip->check_sanity_work,
 			msecs_to_jiffies(1000));
 
 	if (chip->wa_flag & IADC_GAIN_COMP_WA) {
@@ -8974,7 +8849,6 @@ static int fg_probe(struct spmi_device *spmi)
 			fg_hard_jeita_alarm_cb);
 	init_completion(&chip->sram_access_granted);
 	init_completion(&chip->sram_access_revoked);
-	init_completion(&chip->fg_sram_updating_done);
 	complete_all(&chip->sram_access_revoked);
 	init_completion(&chip->batt_id_avail);
 	init_completion(&chip->first_soc_done);
@@ -9169,7 +9043,7 @@ static void check_and_update_sram_data(struct fg_chip *chip)
 	else
 		time_left = 0;
 
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->update_temp_work, msecs_to_jiffies(time_left * 1000));
 
 	next_update_time = chip->last_sram_update_time
@@ -9180,7 +9054,7 @@ static void check_and_update_sram_data(struct fg_chip *chip)
 	else
 		time_left = 0;
 
-	queue_delayed_work(system_power_efficient_wq,
+	schedule_delayed_work(
 		&chip->update_sram_data, msecs_to_jiffies(time_left * 1000));
 }
 
@@ -9292,8 +9166,7 @@ static int fg_reset_lockup_set(const char *val, const struct kernel_param *kp)
 		pr_info("fg_reset_on_lockup set to %d\n", fg_reset_on_lockup);
 
 	if (fg_reset_on_lockup)
-		queue_delayed_work(system_power_efficient_wq,
-			&chip->check_sanity_work,
+		schedule_delayed_work(&chip->check_sanity_work,
 			msecs_to_jiffies(1000));
 	else
 		cancel_delayed_work_sync(&chip->check_sanity_work);
