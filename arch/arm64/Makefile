@@ -16,9 +16,11 @@ OBJCOPYFLAGS	:=-O binary -R .note -R .note.gnu.build-id -R .comment -S
 GZFLAGS		:=-9
 
 KBUILD_DEFCONFIG := defconfig
+LD_CFLAGS := -O3
 
 KBUILD_CFLAGS	+= -mgeneral-regs-only
-KBUILD_CFLAGS	+= -fno-pic
+KBUILD_CFLAGS	+= -pipe -fno-pic -fno-signed-zeros
+KBUILD_CFLAGS	+= -ffast-math -ffreestanding -fpredictive-commoning -fgcse-after-reload -funsafe-math-optimizations -funroll-loops -fgcse-sm -fgcse-las -fsched-pressure -fprofile-correction -Wno-attribute-alias
 KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
 
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
