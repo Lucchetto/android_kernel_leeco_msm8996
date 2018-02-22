@@ -369,7 +369,6 @@ GCC_OPT		:=	-ffast-math \
 			-fsingle-precision-constant \
 			-fpredictive-commoning \
 			-fsanitize=leak \
-			-Wno-maybe-uninitialized \
 			-Wno-array-bounds \
 			$(GRAPHITE)
 
@@ -429,7 +428,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -Wno-pointer
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration -Wno-misleading-indentation -Wno-return-local-addr \
 		   -Wno-format-security -Wno-error=maybe-uninitialized -Wno-bool-compare -Wno-tautological-compare \
-                   -Wno-maybe-uninitialized -Wno-unused-function -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
+                   -Wno-unused-function -mcpu=cortex-a57.cortex-a53 -mtune=cortex-a57.cortex-a53 \
 		   -std=gnu89
 
 KBUILD_AFLAGS_KERNEL :=
@@ -634,6 +633,8 @@ endif # $(dot-config)
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
+
+KBUILD_CFLAGS += $(call cc-disable-warning,maybe-uninitialized,)
 
 include $(srctree)/arch/$(SRCARCH)/Makefile
 
